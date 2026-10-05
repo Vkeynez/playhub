@@ -1,0 +1,19 @@
+{
+  "name": "@gp/game-sdk",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./core": "./src/core/index.ts",
+    "./engine": "./src/engine/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "fast-check": "4.10.2",
+    "zod": "4.6.5"
+  }
+}

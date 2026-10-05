@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/*
+  - packages/games/*
+# spikes/ is deliberately outside the workspace: throwaway code with its own lockfile.
+allowBuilds:
+  '@embedded-postgres/darwin-arm64': true
+  esbuild: true
