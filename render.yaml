@@ -1,0 +1,181 @@
+# Render Blueprint: one free web service (api) + one static site (web). ARCHITECTURE §10.1.
+# Validated against https://render.com/schema/render.yaml.json (see docs/RUNBOOK.md, "Blueprint").
+#
+# Defaults that would hurt us if left unset:
+#   - `plan` defaults to the PAID 0.5c-512mb, so `plan: free` is mandatory.
+#   - `region` defaults to oregon. Singapore is permanent once the service exists.
+#   - `previews` is omitted on purpose: that keeps PR previews off. They would spend the
+#     750 free instance-hours that the always-on api needs (744 h in a 31-day month).
+#
+# Service names become the onrender.com hostnames (<name>.onrender.com, or with a suffix if the
+# name is taken). The hostname cannot change later, and the web hostname is baked into the APK's
+# App Links, so pick the names before creating the Blueprint (docs/SETUP.md step 3).
+#
+# Env vars with `sync: false` are prompted for ONLY when the Blueprint is first created; later
+# syncs ignore them. A secret added here later must also be entered by hand in the dashboard.
+# Never set NODE_ENV=production here: Render applies env vars to the build too, and pnpm then
+# skips devDependencies (esbuild, turbo), which breaks the build.
+
+services:
+  # API: Fastify REST + Socket.IO + push sender, one process (ARCHITECTURE §5).
+  - type: web
+    name: playhub-api
+    runtime: node
+    plan: free # upgrade path: 0.5c-512mb ($7/month), no code changes (docs/RUNBOOK.md)
+    region: singapore
+    branch: main
+    # The filtered install leaves out Expo/RN/Skia. The server build bundles to one file with
+    # esbuild and copies packages/db/drizzle/** into apps/server/dist/migrations/.
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --filter "@gp/server..." && pnpm turbo build --filter=@gp/server
+    # Migrations run inside main.js before listen() (pre-deploy is paid-only; ARCHITECTURE §5.5).
+    startCommand: node --max-old-space-size=384 apps/server/dist/main.js
+    # /health reads process memory only and never touches Postgres (ARCHITECTURE §5.3).
+    healthCheckPath: /health
+    # Deploy only after GitHub CI passes for the commit on main.
+    autoDeployTrigger: checksPass
+    # Default, set explicitly: the boot sweep waits 60 s + this + 30 s (ARCHITECTURE §5.5, §5.6).
+    maxShutdownDelaySeconds: 30
+    buildFilter:
+      paths:
+        - apps/server/**
+        - packages/game-sdk/**
+        - packages/protocol/**
+        - packages/db/**
+        - packages/sync/**
+        - packages/config/**
+        - packages/games/*/src/logic/**
+        - packages/games/*/src/bot/**
+        - packages/games/*/src/manifest.ts
+        - packages/games/*/package.json
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - turbo.json
+        - .nvmrc
+      ignoredPaths:
+        - '**/*.test.ts'
+        - '**/*.md'
+    envVars:
+      # Runtime and tooling (not secrets).
+      - key: NODE_VERSION
+        value: 24.21.0 # keep equal to .nvmrc
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: '0'
+      - key: TURBO_TELEMETRY_DISABLED
+        value: '1'
+      - key: AUTH_TRANSPORT
+        value: bearer # cookie mode needs a custom domain (ARCHITECTURE §7)
+      # Required secrets, entered once at Blueprint creation (docs/SETUP.md step 3).
+      - key: DATABASE_URL
+        sync: false # Neon POOLED URL (-pooler host): all app traffic
+      - key: DATABASE_URL_DIRECT
+        sync: false # Neon DIRECT URL: migrations only
+      - key: CORS_ORIGINS
+        sync: false # e.g. https://playhub-web.onrender.com
+      # Required secrets that Render generates (random 256-bit, base64). Nobody types or pastes
+      # them. Never rotate REFRESH_SECRET or K_ROTATE casually: that orphans every guest account.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REFRESH_SECRET
+        generateValue: true
+      - key: K_ROTATE
+        generateValue: true
+      - key: ADMIN_TOKEN
+        generateValue: true
+      # Optional: leave blank until the account exists. The server treats blank as unset and
+      # logs the disabled feature (ARCHITECTURE §5.5).
+      - key: GOOGLE_CLIENT_IDS
+        sync: false # comma-separated OAuth client IDs; unset -> 503 google_not_configured
+      - key: EXPO_ACCESS_TOKEN
+        sync: false # unset -> push off (Phase 1)
+      - key: SENTRY_DSN
+        sync: false
+      - key: DEV_USER_IDS
+        sync: false # user IDs that can see dev-only games (OPEN_QUESTIONS I5)
+      - key: MIN_PROTOCOL_VERSION
+        sync: false # unset -> the server's built-in minimum
+
+  # Web: Expo web export served from Render's global CDN. A static site has no region or plan.
+  - type: web
+    name: playhub-web
+    runtime: static
+    branch: main
+    buildCommand: corepack enable && pnpm install --frozen-lockfile --filter "@gp/client..." && pnpm turbo build --filter=@gp/client
+    staticPublishPath: apps/client/dist
+    # Deployed by its deploy hook only after the api reports the new buildSha (ARCHITECTURE §10.6).
+    autoDeployTrigger: 'off'
+    buildFilter:
+      paths:
+        - apps/client/**
+        - packages/**
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - turbo.json
+        - .nvmrc
+      ignoredPaths:
+        - '**/*.test.ts'
+        - '**/*.test.tsx'
+        - '**/*.md'
+        - packages/db/**
+    envVars:
+      - key: NODE_VERSION
+        value: 24.21.0 # keep equal to .nvmrc
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: '0'
+      - key: TURBO_TELEMETRY_DISABLED
+        value: '1'
+    # SPA fallback. Rewrites never apply where a file exists, so /.well-known/assetlinks.json and
+    # hashed assets are served as real files.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    # Headers. The CSP below is a hand-written placeholder until one generator emits both these
+    # headers and the local test server's headers (ARCHITECTURE §6.5). It stays Report-Only until
+    # Playwright sees zero violations. Replace playhub-api.onrender.com if the api hostname differs.
+    headers:
+      # Caching (ARCHITECTURE §6.5). Check precedence with curl after the first deploy
+      # (docs/RUNBOOK.md): hashed paths must answer with the immutable value only.
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+      - path: /_expo/static/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /canvaskit/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /**/*.wasm
+        name: Content-Type
+        value: application/wasm
+      # Android App Links: must be 200 application/json with no redirect (ARCHITECTURE §11).
+      - path: /.well-known/assetlinks.json
+        name: Content-Type
+        value: application/json
+      # Room links are not for search engines.
+      - path: /join/*
+        name: X-Robots-Tag
+        value: noindex
+      # Security headers.
+      - path: /*
+        name: Content-Security-Policy-Report-Only
+        value: "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client; connect-src 'self' https://playhub-api.onrender.com wss://playhub-api.onrender.com https://cdn.jsdelivr.net https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+      - path: /*
+        name: Cross-Origin-Opener-Policy
+        value: same-origin-allow-popups # Google Identity Services needs its popup
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=(), payment=(), usb=(), gamepad=(self), identity-credentials-get=(self "https://accounts.google.com")
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY # the CSP frame-ancestors is only Report-Only for now
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin

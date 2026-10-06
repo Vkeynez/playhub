@@ -1,0 +1,60 @@
+name: Keep API warm
+# Render's free web service spins down after 15 min without inbound HTTP or WebSocket
+# traffic; the next request then waits ~1 min for a cold start.
+#
+# Budget: 750 free instance-hours per workspace per month. A 31-day month is 744 h, so
+# exactly ONE always-on free service fits. A second free service, or PR previews, breaks this.
+#
+# Actions minutes: free on PUBLIC repos. On a PRIVATE repo (GitHub Free = 2,000 min/month),
+# every run bills at least 1 full minute: 6/h x 744 h = ~4,464 min -> over quota, which also
+# blocks CI. For a private repo, use cron-job.org or UptimeRobot (free) every 10 min instead,
+# and delete the `schedule:` block below (keep workflow_dispatch for manual pings).
+#
+# /health must NOT touch Postgres, or every ping wakes Neon and burns its 100 CU-hours.
+#
+# GitHub disables scheduled workflows in public repos after 60 days with no activity.
+# If the project goes quiet, re-enable it here or rely on the external pinger.
+#
+# Setup: Settings -> Secrets and variables -> Actions -> Variables -> new variable
+#        API_URL = https://your-service.onrender.com
+
+on:
+  schedule:
+    # :03, :13, :23 ... avoids the top-of-hour rush, when GitHub is most likely to
+    # delay or drop scheduled runs. 10 min leaves margin inside the 15-min idle window.
+    - cron: '3-59/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: keep-alive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Ping /health
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "::error::Set a repository variable named API_URL (Settings -> Secrets and variables -> Actions -> Variables)."
+            exit 1
+          fi
+          url="${API_URL%/}/health"
+          body="$RUNNER_TEMP/health.json"
+          for attempt in 1 2; do
+            # Generous timeout: if the service HAS spun down, this request pays the cold start.
+            code=$(curl -s -o "$body" -w '%{http_code}' --max-time 90 "$url" || true)
+            echo "attempt $attempt: GET $url -> $code"
+            # Render's spin-up page also answers 200 (with HTML), so a 200 alone proves nothing:
+            # require "ok":true in the JSON body that /health returns (ARCHITECTURE §5.3, §10.3).
+            if [ "$code" = "200" ] && grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' "$body" 2>/dev/null; then
+              exit 0
+            fi
+            [ "$code" = "200" ] && echo "200 but no \"ok\":true in the body (Render spin-up page?)"
+            sleep 15
+          done
+          echo "::error::Health check failed twice"
+          exit 1

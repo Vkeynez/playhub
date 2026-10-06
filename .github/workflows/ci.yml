@@ -1,0 +1,124 @@
+name: CI
+# Lint, typecheck and tests on every push and PR to main (ARCHITECTURE §12).
+#
+# This workflow is also the deploy gate: the api uses `autoDeployTrigger: checksPass`, so Render
+# deploys a commit on main only after every check on it passes (render.yaml).
+# Never add a job here that waits for the deploy (for example "poll /health until buildSha
+# matches"): Render waits for this workflow, so that job would wait forever. Post-deploy steps
+# (web deploy hook, eas update; ARCHITECTURE §10.6) belong in a separate workflow.
+#
+# Turborepo uses its LOCAL cache only, persisted with actions/cache. Remote cache is off in
+# turbo.json, and no TURBO_TOKEN is ever configured.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  # Cancel superseded PR runs. Runs on main always finish, because Render's deploy gate reads them.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CONTRACT_SIM_MATCHES: '1000' # contract harness: 1,000 simulated matches per game in CI (100 locally)
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+  TURBO_TELEMETRY_DISABLED: '1'
+  DO_NOT_TRACK: '1'
+
+jobs:
+  check:
+    name: lint, typecheck, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Real Postgres 17 for server integration tests, matching Neon's major version. Never a Neon
+    # branch: CI would burn the 100 CU-hours (ARCHITECTURE §12).
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: gp
+          POSTGRES_PASSWORD: gp
+          POSTGRES_DB: gp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gp -d gp_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # Throwaway credentials for the service container above; not a secret.
+      TEST_DATABASE_URL: postgres://gp:gp@localhost:5432/gp_test
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node from .nvmrc
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          # pnpm isn't on PATH yet at this point; the pnpm store is cached below instead.
+          package-manager-cache: false
+
+      - name: Enable Corepack (pnpm version from package.json packageManager)
+        run: |
+          corepack enable
+          pnpm --version
+
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "dir=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.dir }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Turborepo (local cache)
+        uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint (ESLint + dependency-cruiser)
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        # turbo.json declares CONTRACT_SIM_MATCHES and TEST_DATABASE_URL for the test task, so
+        # Turborepo's strict env mode passes them through to vitest.
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      # Deploy-gate checks to add when the apps land (ARCHITECTURE §10.1, §12):
+      # - boot the bundled apps/server/dist/main.js (not tsx) against the Postgres service:
+      #   migrations, /health, one socket round trip;
+      # - after the web export, apps/client/dist/.well-known/assetlinks.json exists;
+      # - budgets: Home entry <= 250 KB brotli, no game UI in the Home chunk;
+      # - Playwright E2E on main and on PRs that touch apps/.
