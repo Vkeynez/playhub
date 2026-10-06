@@ -1,0 +1,37 @@
+{
+  "name": "@gp/game-cricket",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./logic": "./src/logic/index.ts",
+    "./manifest": "./src/manifest.ts",
+    "./ui": "./src/ui/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.ui.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@gp/game-sdk": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@react-native/metro-config": "0.87.1",
+    "@shopify/react-native-skia": "2.6.2",
+    "@types/react": "19.2.18",
+    "i18next": "26.4.2",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-reanimated": "4.5.1",
+    "react-native-worklets": "0.10.1"
+  },
+  "peerDependencies": {
+    "@shopify/react-native-skia": "2.6.2",
+    "i18next": "26.4.2",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-reanimated": "4.5.1",
+    "react-native-worklets": "0.10.1"
+  }
+}
