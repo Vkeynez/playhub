@@ -38,6 +38,7 @@ This Mac is a corporate machine. **Ask before using any account or credential th
   - relies on Turborepo's remote cache being disabled in `turbo.json`.
 
   Check it with `pnpm config list`, which should show project keys only.
+
 - **Release keystore:** it never touches this machine. Release-signed builds run on EAS cloud only. Local and dev builds use a project-unique debug keystore (kept outside git), never the public template debug key.
 
 ## Repo conventions
@@ -48,6 +49,7 @@ This Mac is a corporate machine. **Ask before using any account or credential th
   - `node:*`.
 
   Lint enforces this.
+
 - **Validation:** every socket event and REST body has a zod schema in `packages/protocol`.
 - **Hidden information** leaves the server only through `viewFor` / `eventsFor`.
 - **Neon must be able to sleep:**
@@ -65,13 +67,13 @@ This Mac is a corporate machine. **Ask before using any account or credential th
 
 Always go through the wrapper. `pnpm` comes from Corepack (pnpm 12.8.1, pinned in `packageManager`).
 
-| Task | Command |
-|---|---|
-| Install | `scripts/isolated.sh corepack pnpm install` (new build scripts go in `allowBuilds` in `pnpm-workspace.yaml`) |
-| Full check | `scripts/isolated.sh corepack pnpm check`, which runs lint + depcruise + typecheck + test |
-| One package | `scripts/isolated.sh corepack pnpm --filter @gp/protocol --filter @gp/db test` |
-| Generate DB migrations | `scripts/isolated.sh corepack pnpm --filter @gp/db exec drizzle-kit generate` |
-| Git | `scripts/isolated.sh git …` (repo-local identity; the credential helper reads `~/.gamehub-secrets/github-token` only) |
+| Task                   | Command                                                                                                               |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Install                | `scripts/isolated.sh corepack pnpm install` (new build scripts go in `allowBuilds` in `pnpm-workspace.yaml`)          |
+| Full check             | `scripts/isolated.sh corepack pnpm check`, which runs lint + depcruise + typecheck + test                             |
+| One package            | `scripts/isolated.sh corepack pnpm --filter @gp/protocol --filter @gp/db test`                                        |
+| Generate DB migrations | `scripts/isolated.sh corepack pnpm --filter @gp/db exec drizzle-kit generate`                                         |
+| Git                    | `scripts/isolated.sh git …` (repo-local identity; the credential helper reads `~/.gamehub-secrets/github-token` only) |
 
 Tests that need Postgres use `startTestDb()` from `@gp/db/testing`, which runs an embedded Postgres 17 (no Docker).
 
@@ -85,7 +87,7 @@ Append these as you discover them.
 - **Render spin-up:** while a free service is waking, Render answers with an HTML loading page with status 200. Never treat a 200 as JSON without checking the content-type.
 - **Neon:** each isolated wake costs ≥ 5 min × 0.25 CU. Anything on a timer, client or server, that hits a DB-backed endpoint burns the 100 CU-h budget (ARCHITECTURE §5.3).
 - **node-postgres:** always attach `pool.on('error')`. Neon drops idle connections when it suspends, and an unhandled pool `'error'` crashes Node.
-- **CanvasKit:** the wasm must match the canvaskit JS glue of the *installed* Skia. Derive the version at build time; never hard-code it.
+- **CanvasKit:** the wasm must match the canvaskit JS glue of the _installed_ Skia. Derive the version at build time; never hard-code it.
 - **Skia text:** Skia `Text` doesn't shape Tamil. Use RN `<Text>` overlays or Skia `Paragraph` with a bundled font.
 - **Google Sign-In:** the legacy Android APIs were removed (play-services-auth 22.0.0, Aug 2026). Use Credential Manager via `react-native-nitro-google-signin`.
 - **TypeScript:** stay on 6.0.x until typescript-eslint supports TS 7.
