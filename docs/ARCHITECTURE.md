@@ -533,7 +533,7 @@ Carrom trajectories (Phase 3) are sent as binary attachments: quantised `Int16` 
 1. The new instance boots while the old one serves.
 2. Once the new instance passes health checks, it receives all **new** connections. Existing WebSockets stay on the old instance.
 3. **60 s later**, the old instance gets `SIGTERM`.
-4. After `maxShutdownDelaySeconds` (we keep the default 30 s) it is `SIGKILL`ed.
+4. After the shutdown delay (30 s; `maxShutdownDelaySeconds` can't be set on free services) it is `SIGKILL`ed.
 
 That's a **60–90 s overlap** in which a reconnecting player can land on the new instance while an opponent is still on the old one. LOBBY and FINISHED rooms rarely write, so the old instance may not notice it has been superseded until SIGTERM.
 

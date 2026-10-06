@@ -33,8 +33,8 @@ services:
     healthCheckPath: /health
     # Deploy only after GitHub CI passes for the commit on main.
     autoDeployTrigger: checksPass
-    # Default, set explicitly: the boot sweep waits 60 s + this + 30 s (ARCHITECTURE §5.5, §5.6).
-    maxShutdownDelaySeconds: 30
+    # maxShutdownDelaySeconds can't be set on free services (Render rejects the Blueprint), so the
+    # default 30 s applies. The boot sweep waits 60 s + 30 s + 30 s (ARCHITECTURE §5.5, §5.6).
     buildFilter:
       paths:
         - apps/server/**
