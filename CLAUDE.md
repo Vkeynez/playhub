@@ -63,7 +63,17 @@ This Mac is a corporate machine. **Ask before using any account or credential th
 
 ## Commands
 
-To be filled in during Phase 0 (pnpm + turbo scripts).
+Always go through the wrapper. `pnpm` comes from Corepack (pnpm 12.8.1, pinned in `packageManager`).
+
+| Task | Command |
+|---|---|
+| Install | `scripts/isolated.sh corepack pnpm install` (new build scripts go in `allowBuilds` in `pnpm-workspace.yaml`) |
+| Full check | `scripts/isolated.sh corepack pnpm check`, which runs lint + depcruise + typecheck + test |
+| One package | `scripts/isolated.sh corepack pnpm --filter @gp/protocol --filter @gp/db test` |
+| Generate DB migrations | `scripts/isolated.sh corepack pnpm --filter @gp/db exec drizzle-kit generate` |
+| Git | `scripts/isolated.sh git …` (repo-local identity; the credential helper reads `~/.gamehub-secrets/github-token` only) |
+
+Tests that need Postgres use `startTestDb()` from `@gp/db/testing`, which runs an embedded Postgres 17 (no Docker).
 
 ## Gotchas
 

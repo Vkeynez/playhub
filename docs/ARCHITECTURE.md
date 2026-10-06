@@ -1125,3 +1125,24 @@ Read from the public npm registry and the Expo, Render and Neon docs on 2026-10-
 | D-039 | Permissions: no runtime permission except `POST_NOTIFICATIONS`; normal permissions allowed; dangerous ones blocked; CI allowlist | **Proposed** (OQ G5) | The literal brief breaks push |
 | D-040 | Release builds only on EAS cloud; project-unique debug key; `.dev` package variant | **Proposed** (OQ A5, G4) | Keystore custody on a corporate machine; App Link and OAuth safety |
 | D-041 | Neon wake governor (stretch flushes → refuse new rooms and guests above 80 CU-h) | **Proposed** | Running out takes the app down for the month |
+| D-042 | Protocol/DB refinements made while building P0-M4 (details in `packages/protocol` and `packages/db/src/schema`). See the notes below the table. | Accepted (implementation detail) | Keeps the wire format and schema explicit and testable |
+
+**D-042 in detail:**
+
+- **Acks:** every ack is a union discriminated on `ok`, including `room:join`'s error.
+- **Payload additions:**
+  - `react` and `presence` carry `roomId`;
+  - `room:ready` carries `loaded`;
+  - lobby commands share a closed `LobbyAck` reason enum;
+  - `RoomSnapshot` adds code, gameId, mode, seatCount, options, yourSeat, matchId, rematch state and typed deadlines (`turn | grace | rematch | lobby_close`).
+- **Error codes:** REST errors use lowercase snake case; socket errors use SCREAMING_SNAKE.
+- **Versions:** wire versions are capped at `Number.MAX_SAFE_INTEGER`.
+- **Schema additions:**
+  - `users.guest_key_hash` (partial unique, used for `/auth/guest` idempotency) and `users.mute_invites`;
+  - `match_actions.game_now`;
+  - `match_participants` keyed by `(match_id, seat)`, with a nullable `user_id` and a `bot_level`;
+  - `matches.snapshot_version` is `bigint NOT NULL DEFAULT 0`;
+  - the `server_state` row is seeded by migration 0001.
+- **Room codes:** the 24-hour no-reuse rule is checked by the server when it generates a code, because a partial index can't use `now()`.
+- **Catalog seed:** uses `ON CONFLICT DO NOTHING`, so re-seeding never undoes an ops change.
+- **Enums:** Postgres enums duplicate the protocol enums. A follow-up test will assert they match.
