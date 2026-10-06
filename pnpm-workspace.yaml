@@ -8,3 +8,5 @@ allowBuilds:
   '@embedded-postgres/linux-arm64': true
   '@embedded-postgres/linux-x64': true
   esbuild: true
+  # Copies Skia's prebuilt native libs from its platform packages into place (needed for Android).
+  '@shopify/react-native-skia': true

@@ -4,3 +4,4 @@ docs/
 **/drizzle/
 spikes/
 .isolated/
+apps/client/src/generated/
