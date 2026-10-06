@@ -88,7 +88,10 @@ Append these as you discover them.
 - **Neon:** each isolated wake costs ≥ 5 min × 0.25 CU. Anything on a timer, client or server, that hits a DB-backed endpoint burns the 100 CU-h budget (ARCHITECTURE §5.3).
 - **node-postgres:** always attach `pool.on('error')`. Neon drops idle connections when it suspends, and an unhandled pool `'error'` crashes Node.
 - **CanvasKit:** the wasm must match the canvaskit JS glue of the _installed_ Skia. Derive the version at build time; never hard-code it.
-- **Skia text:** Skia `Text` doesn't shape Tamil. Use RN `<Text>` overlays or Skia `Paragraph` with a bundled font.
+- **Skia text:** Skia `Text` doesn't shape Tamil. Use RN `<Text>` overlays or Skia `Paragraph` with a bundled font. On web, `ParagraphStyle.textStyle` is ignored, so use `pushStyle`. `SkFont.measureText` doesn't exist on web.
+- **CanvasKit loading:** there's no `instantiateWasm` hook. Hand the SRI-verified bytes over as a `blob:` URL (the CSP needs `blob:` in `connect-src`). Skia's web loader caches a _failed_ init, so decide between CDN and fallback before calling `LoadSkiaWeb()`.
+- **Frame stats:** a steady `useFrameCallback` cadence doesn't prove smooth frames; check `adb shell dumpsys gfxinfo` too. A backgrounded app reports a perfect 60 fps.
+- **The Android emulator on this Mac is shared** with the owner's work. Never launch or screenshot other apps; uninstall only our own packages.
 - **Google Sign-In:** the legacy Android APIs were removed (play-services-auth 22.0.0, Aug 2026). Use Credential Manager via `react-native-nitro-google-signin`.
 - **TypeScript:** stay on 6.0.x until typescript-eslint supports TS 7.
 - **Drizzle:** 1.0 is still beta; use 0.45.x.

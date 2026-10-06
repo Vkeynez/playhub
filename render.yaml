@@ -163,7 +163,7 @@ services:
       # Security headers.
       - path: /*
         name: Content-Security-Policy-Report-Only
-        value: "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client; connect-src 'self' https://playhub-api.onrender.com wss://playhub-api.onrender.com https://cdn.jsdelivr.net https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+        value: "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client; connect-src 'self' blob: https://playhub-api.onrender.com wss://playhub-api.onrender.com https://cdn.jsdelivr.net https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
       - path: /*
         name: Cross-Origin-Opener-Policy
         value: same-origin-allow-popups # Google Identity Services needs its popup

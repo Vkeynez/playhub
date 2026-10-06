@@ -486,7 +486,10 @@ Carrom trajectories (Phase 3) are sent as binary attachments: quantised `Int16` 
 
 - **Boot:** the server is bundled to one file with esbuild (source maps, no minification). `google-auth-library`, `expo-server-sdk` and `planck` are lazy-`import()`ed.
 - **Health checks:** Render probes every few seconds. Each check must answer within **5 s**, and after **15 s** of failures traffic is pulled, so the main thread must never stall.
-- **Carrom:** a research probe (planck 1.5.0, Node 24, laptop) measured ≈ **2.1 ms per shot** (~100 steps). At a 10× slowdown that's ≈ 20 ms on 0.1 CPU, so the physics worker is optional. Spike (d) measures on Render and on Hermes.
+- **Carrom (spike (d)):** planck 1.5.0 takes **1.76 ms per shot** on Node 24 (~52 steps) and **19–20 ms per shot on Hermes** (emulator; expect 40–80 ms on a mid-range phone).
+  - Hermes and V8 agreed exactly on steps and pocketed coins for the same seeded shots.
+  - At the brief's 10× slowdown, Node is ≈ 18 ms per shot on 0.1 CPU, so the physics worker is optional.
+  - The Render measurement is still to do (with M2).
 - **Limits:**
 
   | Limit | Setting |
@@ -667,6 +670,7 @@ interface RoomTransport<V, A> {
 **Quality governor:**
 
 - It degrades when more than 10% of frames over 3 s miss the measured display interval, so it's 90/120 Hz-aware.
+- **Frame-callback cadence alone isn't enough.** Spike (a) saw a steady 60 Hz `useFrameCallback` cadence while Android's `gfxinfo` reported 74–80% janky presented frames. The governor therefore also uses worklet work time, and on Android a presentation signal.
 - The Lite effects setting and the OS reduce-motion setting pin a tier.
 
 **Text.** Localized strings are **never** drawn with Skia `Text`, which does no complex-script shaping, so Tamil vowel signs and conjuncts render wrongly.
@@ -679,11 +683,14 @@ interface RoomTransport<V, A> {
 
 - **CanvasKit version-matched.**
   - `CANVASKIT_VERSION` is read at build time from the `canvaskit-wasm` resolved under the *installed* Skia. CI fails if anything else is used.
-  - For reference: Skia 2.14 → 0.41.0, which measured **7.2 MB raw / 2.9 MB gzipped**. Re-measure once spike (a) pins Skia (SDK 57 = 2.6.2, SDK 58 = 2.13.1).
-- **Loader with a real fallback.** `loadCanvasKit()` passes an Emscripten `instantiateWasm` hook through `LoadSkiaWeb(opts)` (to be verified in spike (a)).
-  1. It fetches `https://cdn.jsdelivr.net/npm/canvaskit-wasm@${CANVASKIT_VERSION}/bin/full/canvaskit.wasm` with SRI (`sha384`, computed at build) and an 8 s timeout.
-  2. On an error, a timeout or an integrity mismatch, it falls back to `/canvaskit/${CANVASKIT_VERSION}/canvaskit.wasm`, which is self-hosted with `application/wasm`, immutable, and excluded from precache.
-  3. It reports which source was used.
+  - Measured in spike (a) on SDK 57 (Skia 2.6.2 resolves `canvaskit-wasm` 0.41.0, full build): **8.08 MB raw / 3.27 MB gzip / 2.51 MB brotli**.
+- **Loader with a real fallback** (verified in spike (a); `spikes/render-stress/RESULTS.md`). This CanvasKit build has **no** `instantiateWasm` hook, so:
+  1. `loadCanvasKit()` fetches `https://cdn.jsdelivr.net/npm/canvaskit-wasm@${CANVASKIT_VERSION}/bin/full/canvaskit.wasm` with SRI (`sha384`, computed at build) and an 8 s abort.
+  2. It hands the verified bytes to CanvasKit as a **`blob:` URL** through `locateFile`. The CSP's `connect-src` must therefore include `blob:`; without it CanvasKit fails with no fallback.
+  3. On an error, a timeout or an integrity mismatch, it uses `/canvaskit/${CANVASKIT_VERSION}/canvaskit.wasm`, which is self-hosted with `application/wasm`, immutable, and excluded from precache.
+  4. It reports which source was used.
+
+  Skia's web loader **caches a failed init**, so the fallback decision has to happen before `LoadSkiaWeb()` runs. Measured: self-hosted init 33–42 ms on loopback; jsDelivr with SRI 0.98–1.40 s. The bad-SRI and timeout cases both fell back correctly.
 - **Preload in the lobby.**
   - On web, the lobby starts `LoadSkiaWeb()` and `registry.load(gameId)` when it mounts, and Ready is enabled only after both resolve.
   - `room:start` waits for every human's `loaded` flag. The wait is capped at 20 s, after which that seat starts in grace.
@@ -693,7 +700,7 @@ interface RoomTransport<V, A> {
 
   ```
   default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client;
-  connect-src 'self' https://<api> wss://<api> https://cdn.jsdelivr.net https://accounts.google.com/gsi/;
+  connect-src 'self' blob: https://<api> wss://<api> https://cdn.jsdelivr.net https://accounts.google.com/gsi/;
   frame-src https://accounts.google.com/gsi/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style;
   img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self'; manifest-src 'self';
   object-src 'none'; base-uri 'none'; frame-ancestors 'none'
@@ -976,6 +983,11 @@ Expand/contract protocol changes make an occasional misordering harmless: the cl
   - lazy game assets.
 
   The APK size is checked in CI, and G2 covers the fallback.
+
+  **Spike (a) measured:**
+  - A universal 4-ABI release APK is **123.3 MB**. The arm64 native libraries alone are 27.9 MB, so an arm64-only APK is ≈ 40 MB (estimated).
+  - Even arm64 + armeabi-v7a is likely over 60 MB, so G2's fallback (an arm64 main APK plus a separate v7a APK) is the expected outcome. Measure it once the client exists.
+  - All 64-bit `.so` files are 16 KB-page aligned, and the APK runs on a 16 KB-page Android image.
 - **Native-module headroom.** The Phase 0 APK already contains the native modules later phases need: expo-notifications, expo-audio, expo-screen-orientation, the nitro modules, Sentry. Its fingerprint then stays valid longer, so OTA updates keep reaching it.
 - **Updates:**
   - `app.config.ts` is deterministic: no time, SHA or machine-specific values; build metadata goes in through `EXPO_PUBLIC_*`.
@@ -1146,3 +1158,32 @@ Read from the public npm registry and the Expo, Render and Neon docs on 2026-10-
 - **Room codes:** the 24-hour no-reuse rule is checked by the server when it generates a code, because a partial index can't use `now()`.
 - **Catalog seed:** uses `ON CONFLICT DO NOTHING`, so re-seeding never undoes an ops change.
 - **Enums:** Postgres enums duplicate the protocol enums. A follow-up test will assert they match.
+
+**D-043: Game SDK implementation details** (P0-M3, `packages/game-sdk`). Accepted.
+
+- **Log entries:**
+  - payloads are always objects;
+  - the engine's `now` maps to the `game_now` column;
+  - a restore in a new process logs a clock entry carrying the new epoch, and replay keeps `version ≥ epoch·2³²`.
+- **Decisions and boundaries:**
+  - a seat's decision restarts when it becomes awaited, when it acts and is still awaited, or when its deadline moves;
+  - `decisionBoundary` covers a decision starting, ticks, effects and the match ending.
+- **Restore clock:** the 15 s rule covers player deadlines only, not reveal pauses. Game time pauses rather than running backwards.
+- **Bots:**
+  - thinking delays run in game time, so they pause during a clock freeze;
+  - a late bot result is dropped only when the seat's decision or `occupantEpoch` has changed;
+  - a rejected bot or timeout action goes to `onError`.
+- **Snapshots:** they add format, `stateVersion`, `logicVersion` and `lastNow`. A restored engine starts with every human disconnected.
+- **Harness:**
+  - seat 0 is a scripted human, because a match with no humans freezes by design;
+  - the redaction check also perturbs another seat's hidden input;
+  - a deliberately leaky Secret Pick and six broken fixtures prove the harness catches each failure class.
+
+**D-044: Spike (a)/(d) findings, SDK 57.** Recorded. Full report in `spikes/render-stress/RESULTS.md`.
+
+- **CanvasKit:** loads through SRI-verified bytes handed over as a `blob:` URL, so `connect-src` needs `blob:`. There's no `instantiateWasm` hook.
+- **Tamil:** renders correctly with Skia Paragraph and Noto Sans Tamil (web needs `pushStyle`).
+- **16 KB pages:** OK.
+- **APK:** a universal build is 123 MB, so it'll be arm64 + split.
+- **planck:** Node 1.76 ms per shot, Hermes ~20 ms (emulator), with identical results across engines.
+- **Still open:** particle-stress fps needs the owner's phone run (RESULTS.md §8). The SDK 58 re-run is pending.

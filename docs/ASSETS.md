@@ -35,3 +35,4 @@ Every external asset in the app (art, sound, music, fonts, data) is logged here 
 
 | Asset (path) | Used by | Source URL | Author | Licence | Checked on | Notes |
 |---|---|---|---|---|---|---|
+| `spikes/render-stress/assets/fonts/NotoSansTamil-VF.ttf` (spike only) | Spike (a) Tamil Paragraph test | https://github.com/google/fonts/blob/main/ofl/notosanstamil/NotoSansTamil%5Bwdth,wght%5D.ttf | Google / Noto project | SIL OFL 1.1 (`OFL.txt` alongside) | 2026-10-06 | v2.004, sha256 `aa3a9b32…cf88`; OFL use pending OPEN_QUESTIONS F1 |
