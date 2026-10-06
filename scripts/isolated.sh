@@ -19,6 +19,8 @@ if [ ! -x "$NODE_BIN/node" ]; then
   exit 1
 fi
 mkdir -p "$REPO/.isolated/config" "$REPO/.isolated/expo-home" "$REPO/.isolated/gh"
+# npm refuses to load /dev/null as both its user and global config, so the global one is an empty file.
+: > "$REPO/.isolated/npm-globalrc"
 
 exec env \
   -u EXPO_TOKEN -u GITHUB_TOKEN -u GH_TOKEN -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN \
@@ -27,7 +29,7 @@ exec env \
   -u SENTRY_AUTH_TOKEN -u GOOGLE_APPLICATION_CREDENTIALS -u CLOUDSDK_CONFIG -u SSH_AUTH_SOCK \
   PATH="$NODE_BIN:$PATH" \
   GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 \
-  NPM_CONFIG_USERCONFIG=/dev/null NPM_CONFIG_GLOBALCONFIG=/dev/null \
+  NPM_CONFIG_USERCONFIG=/dev/null NPM_CONFIG_GLOBALCONFIG="$REPO/.isolated/npm-globalrc" \
   XDG_CONFIG_HOME="$REPO/.isolated/config" GH_CONFIG_DIR="$REPO/.isolated/gh" \
   __UNSAFE_EXPO_HOME_DIRECTORY="$REPO/.isolated/expo-home" EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 \
   GRADLE_USER_HOME="$HOME/.gradle-playhub" \
