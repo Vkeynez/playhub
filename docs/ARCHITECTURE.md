@@ -894,7 +894,7 @@ The brief's §9 tables, with these refinements:
 
 - **`api`:**
   - `type: web`, `runtime: node`, `plan: free`, `region: singapore`, `healthCheckPath: /health`, `autoDeployTrigger: checksPass`;
-  - build: `corepack enable && pnpm install --frozen-lockfile --filter "@gp/server..." && pnpm turbo build --filter=@gp/server`. The filtered install leaves out Expo/RN/Skia. The build also copies `packages/db/drizzle/**` into `apps/server/dist/migrations/`;
+  - build: `corepack pnpm install --frozen-lockfile --filter "@gp/server..." && corepack pnpm turbo build --filter=@gp/server` (not `corepack enable`: Render's `/usr/bin` is read-only). The filtered install leaves out Expo/RN/Skia. The build also copies `packages/db/drizzle/**` into `apps/server/dist/migrations/`;
   - start: `node --max-old-space-size=384 apps/server/dist/main.js`;
   - `buildFilter` paths: `apps/server/**`, `packages/{game-sdk,protocol,db,sync}/**`, `packages/games/*/src/{logic,bot}/**`, `pnpm-lock.yaml`;
   - env as in §5.5. Secrets use `sync: false`. `NODE_VERSION` is pinned, and also set in `.nvmrc`.

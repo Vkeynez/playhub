@@ -26,7 +26,7 @@ services:
     branch: main
     # The filtered install leaves out Expo/RN/Skia. The server build bundles to one file with
     # esbuild and copies packages/db/drizzle/** into apps/server/dist/migrations/.
-    buildCommand: corepack enable && pnpm install --frozen-lockfile --filter "@gp/server..." && pnpm turbo build --filter=@gp/server
+    buildCommand: corepack pnpm install --frozen-lockfile --filter "@gp/server..." && corepack pnpm turbo build --filter=@gp/server
     # Migrations run inside main.js before listen() (pre-deploy is paid-only; ARCHITECTURE §5.5).
     startCommand: node --max-old-space-size=384 apps/server/dist/main.js
     # /health reads process memory only and never touches Postgres (ARCHITECTURE §5.3).
@@ -100,7 +100,7 @@ services:
     name: playhub-web
     runtime: static
     branch: main
-    buildCommand: corepack enable && pnpm install --frozen-lockfile --filter "@gp/client..." && pnpm turbo build --filter=@gp/client
+    buildCommand: corepack pnpm install --frozen-lockfile --filter "@gp/client..." && corepack pnpm turbo build --filter=@gp/client
     staticPublishPath: apps/client/dist
     # Deployed by its deploy hook only after the api reports the new buildSha (ARCHITECTURE §10.6).
     autoDeployTrigger: 'off'

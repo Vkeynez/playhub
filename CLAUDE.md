@@ -84,6 +84,7 @@ Append these as you discover them.
 - **Render Blueprint:** `plan` defaults to the **paid** `0.5c-512mb` and `region` to `oregon`, so always set `plan: free` and `region: singapore`. Omit `previews` (that disables PR previews).
 - **Render quotas:** a Hobby workspace includes only **5 GB of bandwidth** and **500 build minutes** a month. Never host the APK on Render.
 - **Render deploys:** the old and new instances overlap for 60–90 s on every deploy or restart. That's why every DB write is fenced (ARCHITECTURE §5.6).
+- **Render builds:** never `corepack enable`, because Render's `/usr/bin` is read-only (EROFS). Call `corepack pnpm …` directly. Free services also reject `maxShutdownDelaySeconds`.
 - **Render spin-up:** while a free service is waking, Render answers with an HTML loading page with status 200. Never treat a 200 as JSON without checking the content-type.
 - **Neon:** each isolated wake costs ≥ 5 min × 0.25 CU. Anything on a timer, client or server, that hits a DB-backed endpoint burns the 100 CU-h budget (ARCHITECTURE §5.3).
 - **node-postgres:** always attach `pool.on('error')`. Neon drops idle connections when it suspends, and an unhandled pool `'error'` crashes Node.
