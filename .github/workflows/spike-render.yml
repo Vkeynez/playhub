@@ -30,11 +30,13 @@ jobs:
       ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
     steps:
       - name: Public /health (never touches Postgres)
-        run: curl -sf --max-time 90 -H 'Accept: application/json' "$API_URL/health" | jq .
+        run: |
+          curl -sf --max-time 90 -H 'Accept: application/json' "$API_URL/health" | jq .
 
       - name: Proxy headers, for TRUST_PROXY_HOPS
         if: env.ADMIN_TOKEN != ''
-        run: curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" "$API_URL/ops/headers" | jq .
+        run: |
+          curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" "$API_URL/ops/headers" | jq .
 
       - name: Carrom physics bench on Render free (0.1 CPU)
         if: env.ADMIN_TOKEN != ''
