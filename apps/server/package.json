@@ -11,8 +11,13 @@
   },
   "dependencies": {
     "@gp/db": "workspace:*",
+    "@gp/game-cricket": "workspace:*",
+    "@gp/game-dev-secret-pick": "workspace:*",
+    "@gp/game-dev-tictactoe": "workspace:*",
+    "@gp/game-sdk": "workspace:*",
     "@gp/protocol": "workspace:*",
     "fastify": "5.12.5",
+    "jose": "6.2.12",
     "planck": "1.5.0",
     "socket.io": "4.8.4",
     "zod": "4.6.5"

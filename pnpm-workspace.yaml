@@ -10,3 +10,6 @@ allowBuilds:
   esbuild: true
   # Copies Skia's prebuilt native libs from its platform packages into place (needed for Android).
   '@shopify/react-native-skia': true
+overrides:
+  # Keep React Native's tooling on the RN 0.86 line (Expo SDK 57); a transitive range pulled 0.87.
+  '@react-native/metro-config': 0.86.3

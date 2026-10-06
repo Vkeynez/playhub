@@ -19,6 +19,7 @@
     "@gp/game-dev-secret-pick": "workspace:*",
     "@gp/game-dev-tictactoe": "workspace:*",
     "@gp/game-sdk": "workspace:*",
+    "@gp/protocol": "workspace:*",
     "@shopify/react-native-skia": "2.6.2",
     "expo": "57.0.26",
     "expo-constants": "57.0.20",
@@ -27,6 +28,7 @@
     "expo-router": "57.0.24",
     "expo-status-bar": "57.0.1",
     "i18next": "26.4.2",
+    "qrcode": "1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-i18next": "17.0.15",
@@ -38,9 +40,11 @@
     "react-native-svg": "15.15.4",
     "react-native-web": "0.21.3",
     "react-native-worklets": "0.10.1",
+    "socket.io-client": "4.8.4",
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@types/qrcode": "1.5.6",
     "@types/react": "19.2.18"
   }
 }

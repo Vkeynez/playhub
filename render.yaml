@@ -127,6 +127,9 @@ services:
         - '**/*.md'
         - packages/db/**
     envVars:
+      # Baked into the web bundle at build time (public, not a secret).
+      - key: EXPO_PUBLIC_API_URL
+        value: https://playhub-api-nlgk.onrender.com
       - key: NODE_VERSION
         value: 24.21.0 # keep equal to .nvmrc
       - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
