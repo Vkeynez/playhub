@@ -98,10 +98,10 @@ The server reads releases into memory at boot, so `/app/version` needs a new row
 2. Reload the in-memory caches (the `ADMIN_TOKEN` is under playhub-api → Environment; don't paste it into chats or scripts that get committed):
 
    ```bash
-   curl -s -X POST -H "Authorization: Bearer $ADMIN_TOKEN" https://playhub-api.onrender.com/ops/reload
+   curl -s -X POST -H "Authorization: Bearer $ADMIN_TOKEN" https://playhub-api-nlgk.onrender.com/ops/reload
    ```
 
-3. Check: `curl -s https://playhub-api.onrender.com/app/version` lists the new version.
+3. Check: `curl -s https://playhub-api-nlgk.onrender.com/app/version` lists the new version.
 
 ### 5.3 Share
 

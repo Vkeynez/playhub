@@ -139,7 +139,7 @@ services:
         destination: /index.html
     # Headers. The CSP below is a hand-written placeholder until one generator emits both these
     # headers and the local test server's headers (ARCHITECTURE §6.5). It stays Report-Only until
-    # Playwright sees zero violations. Replace playhub-api.onrender.com if the api hostname differs.
+    # Playwright sees zero violations. Replace playhub-api-nlgk.onrender.com if the api hostname differs.
     headers:
       # Caching (ARCHITECTURE §6.5). Check precedence with curl after the first deploy
       # (docs/RUNBOOK.md): hashed paths must answer with the immutable value only.
@@ -169,7 +169,7 @@ services:
       # Security headers.
       - path: /*
         name: Content-Security-Policy-Report-Only
-        value: "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client; connect-src 'self' blob: https://playhub-api.onrender.com wss://playhub-api.onrender.com https://cdn.jsdelivr.net https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+        value: "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client; connect-src 'self' blob: https://playhub-api-nlgk.onrender.com wss://playhub-api-nlgk.onrender.com https://cdn.jsdelivr.net https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
       - path: /*
         name: Cross-Origin-Opener-Policy
         value: same-origin-allow-popups # Google Identity Services needs its popup

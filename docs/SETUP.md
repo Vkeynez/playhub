@@ -148,7 +148,7 @@ I never use `gh`, the macOS keychain or this machine's git credentials (CLAUDE.m
 
 ### 3c. Check the service names first
 
-`render.yaml` names the services `playhub-api` and `playhub-web`. **These become the hostnames** (`https://playhub-api.onrender.com`, `https://playhub-web.onrender.com`, or with a random suffix if a name is taken). A hostname can't change later, and the web hostname goes into the APK's App Links. If you want other names, tell me **before** this step and I'll change `render.yaml`. A custom domain (step 9) avoids the problem entirely.
+`render.yaml` names the services `playhub-api` and `playhub-web`. **These become the hostnames**, with a random suffix if a name is already taken. Ours are `https://playhub-api-nlgk.onrender.com` (the plain `playhub-api` belongs to someone else) and `https://playhub-web.onrender.com`. A hostname can't change later, and the web hostname goes into the APK's App Links. If you want other names, tell me **before** this step and I'll change `render.yaml`. A custom domain (step 9) avoids the problem entirely.
 
 ### 3d. Create the Blueprint
 
@@ -178,7 +178,7 @@ I never use `gh`, the macOS keychain or this machine's git credentials (CLAUDE.m
 3. Check the API is up. In Terminal (curl is fine; it's a public read):
 
    ```bash
-   curl -s https://playhub-api.onrender.com/health
+   curl -s https://playhub-api-nlgk.onrender.com/health
    ```
 
    Expect JSON containing `"ok":true`. An HTML page means it's still waking up; try again in a minute.
@@ -360,7 +360,7 @@ This key **is** a credential. Do it from a personal device if you can, never via
 The workflow `.github/workflows/keep-alive.yml` already exists. It pings `/health` every 10 min and passes only if the body contains `"ok":true`, because Render's spin-up page also answers 200.
 
 1. **Repo → Settings → Secrets and variables → Actions → Variables tab → New repository variable.**
-2. **Name:** `API_URL`. **Value:** `https://playhub-api.onrender.com` (your API URL, no trailing slash). **Add variable.**
+2. **Name:** `API_URL`. **Value:** `https://playhub-api-nlgk.onrender.com` (your API URL, no trailing slash). **Add variable.**
 3. **Actions → Keep API warm → Run workflow** → it should go green within 2 min. Scheduled runs then start by themselves.
 4. GitHub turns off scheduled workflows after 60 days without repo activity. If that happens, the Actions page shows a button to re-enable it.
 
@@ -368,7 +368,7 @@ The workflow `.github/workflows/keep-alive.yml` already exists. It pings `/healt
 
 On a private repo the cron would use about 4,464 of the 2,000 free minutes a month, so:
 
-1. Sign up at <https://cron-job.org> → **Create cronjob** → URL `https://playhub-api.onrender.com/health`, every **10 minutes**, failure notifications on *(labels may differ)*.
+1. Sign up at <https://cron-job.org> → **Create cronjob** → URL `https://playhub-api-nlgk.onrender.com/health`, every **10 minutes**, failure notifications on *(labels may differ)*.
 2. Tell me, and I'll delete the `schedule:` block from the workflow (keeping manual runs).
 
 **Send back:** "keep-alive green" (or "cron-job.org set").

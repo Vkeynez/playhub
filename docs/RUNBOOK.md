@@ -11,7 +11,7 @@ How to keep the deployed app healthy on free tiers: quotas and alarms, deploys, 
 
 | Piece | Where | Plan | Notes |
 |---|---|---|---|
-| API (`playhub-api`) | Render web service, Singapore | Free: 0.1 CPU, 512 MB, one instance | `https://playhub-api.onrender.com`. Auto-deploys from `main` after CI passes (`checksPass`). |
+| API (`playhub-api`) | Render web service, Singapore | Free: 0.1 CPU, 512 MB, one instance | `https://playhub-api-nlgk.onrender.com`. Auto-deploys from `main` after CI passes (`checksPass`). |
 | Web (`playhub-web`) | Render static site, global CDN | Free | `https://playhub-web.onrender.com`. Deployed by its deploy hook (`autoDeployTrigger: off`). |
 | Database | Neon, `aws-ap-southeast-1`, Postgres 17 | Free, compute capped at 0.25 CU | Pooled URL for the app, direct URL for migrations. |
 | Keep-alive | GitHub Actions `keep-alive.yml` | Free on a public repo | Every 10 min, requires `"ok":true` from `/health`. |
@@ -73,7 +73,7 @@ What players see: a short "reconnecting" moment, never a lost turn or a replayed
 Run from any terminal (public reads):
 
 ```bash
-API=https://playhub-api.onrender.com
+API=https://playhub-api-nlgk.onrender.com
 WEB=https://playhub-web.onrender.com
 
 # API is up and running the new commit (compare buildSha with the commit on main).
@@ -166,7 +166,7 @@ To downgrade, revert the line.
 Work top to bottom. Note the time and what you saw.
 
 1. **Is it the API, the web, or Neon?**
-   - `curl -s https://playhub-api.onrender.com/health` → JSON with `"ok":true`? An HTML "waking up" page means a cold start (wait ~1 min; check the keep-alive is green).
+   - `curl -s https://playhub-api-nlgk.onrender.com/health` → JSON with `"ok":true`? An HTML "waking up" page means a cold start (wait ~1 min; check the keep-alive is green).
    - Web loads? If only the web is broken, check the last web deploy.
    - Neon Console → compute status. **Suspended** with the month's CU-h used up means Neon's quota is gone (see 4).
 2. **Recent change?** Render → Deploys / Events: a deploy in the last hour is the first suspect. Roll back (§3.6) before debugging.
