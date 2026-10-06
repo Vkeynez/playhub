@@ -1,0 +1,10 @@
+{
+  "name": "@gp/client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Placeholder web build until the Expo client lands (P0-M6)",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  }
+}
