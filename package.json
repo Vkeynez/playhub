@@ -10,7 +10,7 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "lint": "eslint . && depcruise --config .dependency-cruiser.cjs packages",
+    "lint": "eslint . && depcruise --config .dependency-cruiser.cjs packages apps",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm lint && pnpm typecheck && pnpm test"
