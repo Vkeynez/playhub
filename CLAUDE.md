@@ -92,6 +92,10 @@ Append these as you discover them.
 - **Skia text:** Skia `Text` doesn't shape Tamil. Use RN `<Text>` overlays or Skia `Paragraph` with a bundled font. On web, `ParagraphStyle.textStyle` is ignored, so use `pushStyle`. `SkFont.measureText` doesn't exist on web.
 - **CanvasKit loading:** there's no `instantiateWasm` hook. Hand the SRI-verified bytes over as a `blob:` URL (the CSP needs `blob:` in `connect-src`). Skia's web loader caches a _failed_ init, so decide between CDN and fallback before calling `LoadSkiaWeb()`.
 - **Frame stats:** a steady `useFrameCallback` cadence doesn't prove smooth frames; check `adb shell dumpsys gfxinfo` too. A backgrounded app reports a perfect 60 fps.
+- **Corporate TLS proxy:** this Mac's traffic to `*.onrender.com` goes through the employer's Netskope proxy (issuer `ca.dwtc.eu.goskope.com`). GitHub and npm are not intercepted.
+  - Browsers and curl trust the corporate root; Node rejects it with `SELF_SIGNED_CERT_IN_CHAIN`, and the Android emulator probably does too.
+  - Run anything that talks to the deployed services from GitHub Actions (`spike-render.yml`) or a personal network.
+  - Never set `NODE_EXTRA_CA_CERTS` to the corporate CA without the owner's OK.
 - **The Android emulator on this Mac is shared** with the owner's work. Never launch or screenshot other apps; uninstall only our own packages.
 - **Google Sign-In:** the legacy Android APIs were removed (play-services-auth 22.0.0, Aug 2026). Use Credential Manager via `react-native-nitro-google-signin`.
 - **TypeScript:** stay on 6.0.x until typescript-eslint supports TS 7.

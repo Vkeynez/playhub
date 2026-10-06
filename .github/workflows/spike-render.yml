@@ -1,0 +1,71 @@
+name: Spike - deployed api
+# Phase 0 spikes (b) and (d, server part) against the deployed api, run from a GitHub runner.
+# The owner's Mac sits behind a corporate TLS-inspecting proxy for *.onrender.com, so local
+# measurements there would be distorted (and Node refuses the proxy's certificate).
+#
+# - probes: public /health always; /ops/headers (proxy hop count for TRUST_PROXY_HOPS) and the
+#   carrom physics bench on Render free only when the ADMIN_TOKEN repository secret exists.
+# - soak: one Socket.IO connection held for N minutes, logging disconnects, drains
+#   (server:moving) and restarts (new bootId / epoch). Restart the service in Render once while
+#   it runs to test the drain and reconnect.
+#
+# Manual only. Needs the API_URL repository variable (already used by keep-alive).
+
+on:
+  workflow_dispatch:
+    inputs:
+      soak_minutes:
+        description: Soak duration in minutes (0 = probes only)
+        default: '32'
+
+permissions:
+  contents: read
+
+jobs:
+  probes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_URL: ${{ vars.API_URL }}
+      ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+    steps:
+      - name: Public /health (never touches Postgres)
+        run: curl -sf --max-time 90 -H 'Accept: application/json' "$API_URL/health" | jq .
+
+      - name: Proxy headers, for TRUST_PROXY_HOPS
+        if: env.ADMIN_TOKEN != ''
+        run: curl -sf --max-time 30 -H "Authorization: Bearer $ADMIN_TOKEN" "$API_URL/ops/headers" | jq .
+
+      - name: Carrom physics bench on Render free (0.1 CPU)
+        if: env.ADMIN_TOKEN != ''
+        run: |
+          curl -sf --max-time 600 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
+            "$API_URL/ops/bench/carrom?shots=200" | jq .
+
+      - name: Admin probes skipped
+        if: env.ADMIN_TOKEN == ''
+        run: echo "::notice::Add the ADMIN_TOKEN repository secret (copied from Render) to run /ops/headers and the bench."
+
+  soak:
+    if: inputs.soak_minutes != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node from .nvmrc
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install socket.io-client in a scratch directory
+        run: mkdir -p /tmp/sio && cd /tmp/sio && npm init -y >/dev/null && npm i socket.io-client@4.8.4
+
+      - name: Soak
+        env:
+          SOCKET_IO_CLIENT_DIR: /tmp/sio
+        run: node spikes/render-socket/soak.mjs "${{ vars.API_URL }}" "${{ inputs.soak_minutes }}"
