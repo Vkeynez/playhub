@@ -1,0 +1,23 @@
+{
+  "name": "@gp/server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "tsx watch src/main.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@gp/db": "workspace:*",
+    "@gp/protocol": "workspace:*",
+    "fastify": "5.12.5",
+    "planck": "1.5.0",
+    "socket.io": "4.8.4",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "socket.io-client": "4.8.4"
+  }
+}
