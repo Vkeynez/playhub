@@ -95,4 +95,8 @@ export default defineConfig(
     files: ['*.config.*', '**/*.config.*', 'scripts/**', 'apps/server/**', 'packages/db/**'],
     languageOptions: { globals: { ...globals.node } },
   },
+  {
+    files: ['**/*.cjs'],
+    languageOptions: { sourceType: 'commonjs', globals: { ...globals.node } },
+  },
 );
