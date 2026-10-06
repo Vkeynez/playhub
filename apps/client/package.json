@@ -1,10 +1,46 @@
 {
   "name": "@gp/client",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "description": "Placeholder web build until the Expo client lands (P0-M6)",
+  "version": "0.1.0",
+  "main": "expo-router/entry",
+  "description": "Expo app: Android APK + web export (Render static site)",
   "scripts": {
-    "build": "node scripts/build.mjs"
+    "start": "node scripts/prepare-canvaskit.mjs && node scripts/prepare-registry.mjs && expo start --web --port 8090",
+    "web": "node scripts/prepare-canvaskit.mjs && node scripts/prepare-registry.mjs && expo start --web --port 8090",
+    "build": "node scripts/prepare-canvaskit.mjs && node scripts/prepare-registry.mjs && expo export -p web --output-dir dist && node scripts/postbuild.mjs",
+    "serve": "node scripts/serve-dist.mjs",
+    "smoke": "node scripts/smoke-web.mjs",
+    "typecheck": "node scripts/prepare-canvaskit.mjs --ts-only && node scripts/prepare-registry.mjs && tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "57.0.16",
+    "@gp/game-cricket": "workspace:*",
+    "@gp/game-dev-secret-pick": "workspace:*",
+    "@gp/game-dev-tictactoe": "workspace:*",
+    "@gp/game-sdk": "workspace:*",
+    "@shopify/react-native-skia": "2.6.2",
+    "expo": "57.0.26",
+    "expo-constants": "57.0.20",
+    "expo-linear-gradient": "57.0.2",
+    "expo-linking": "57.0.11",
+    "expo-router": "57.0.24",
+    "expo-status-bar": "57.0.1",
+    "i18next": "26.4.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-i18next": "17.0.15",
+    "react-native": "0.86.3",
+    "react-native-gesture-handler": "2.32.0",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "5.7.0",
+    "react-native-screens": "4.26.2",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "0.21.3",
+    "react-native-worklets": "0.10.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18"
   }
 }

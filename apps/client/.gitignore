@@ -1,0 +1,7 @@
+# Generated at build time from the installed Skia (scripts/prepare-canvaskit.mjs)
+src/generated/
+public/canvaskit/
+dist/
+.expo/
+expo-env.d.ts
+.smoke/

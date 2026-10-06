@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "playhub",
+    "slug": "playhub",
+    "version": "0.1.0",
+    "scheme": "playhub",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0e1220",
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "playhub",
+      "shortName": "playhub",
+      "themeColor": "#0e1220",
+      "backgroundColor": "#0e1220",
+      "description": "Card, board and party games to play with friends."
+    },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": false }
+  }
+}
