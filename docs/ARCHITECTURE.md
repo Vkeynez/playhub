@@ -1179,6 +1179,13 @@ Read from the public npm registry and the Expo, Render and Neon docs on 2026-10-
   - the redaction check also perturbs another seat's hidden input;
   - a deliberately leaky Secret Pick and six broken fixtures prove the harness catches each failure class.
 
+**D-045: Spike (b)/(d) findings on Render free** (`spikes/render-socket/RESULTS.md`). Recorded.
+
+- **Soak:** a 32-minute WebSocket soak survived a restart and a deploy, reconnecting automatically within 2–3 s with epochs 2 → 3 → 4.
+- **Drain notice not delivered:** Render cuts existing sockets (`transport close`) at instance switchover, so the old instance's `server:moving` never arrives. Clients treat `transport close` like `server:moving`.
+- **Carrom on 0.1 CPU:** p50 16 ms per shot, p95 100 ms, so no worker thread is needed.
+- **Proxy:** `TRUST_PROXY_HOPS = 3`.
+
 **D-044: Spike (a)/(d) findings, SDK 57.** Recorded. Full report in `spikes/render-stress/RESULTS.md`.
 
 - **CanvasKit:** loads through SRI-verified bytes handed over as a `blob:` URL, so `connect-src` needs `blob:`. There's no `instantiateWasm` hook.
