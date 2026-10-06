@@ -68,9 +68,11 @@ services:
       - key: LOG_LEVEL
         value: info
       - key: TRUST_PROXY_HOPS
-        # 0 = trust no proxy. Set to Render's real hop count, measured with GET /ops/headers
-        # after the first deploy (ARCHITECTURE §5.7). Never trust X-Forwarded-For blindly.
-        value: '0'
+        # Measured 2026-10-06 with GET /ops/headers: socket peer 127.0.0.1 (local proxy) <-
+        # 10.25.x (Render balancer) <- 172.70.x (Cloudflare) <- client. Trusting exactly these 3
+        # hops makes request.ip the real client; anything a client adds to X-Forwarded-For
+        # stays untrusted (ARCHITECTURE §5.7). Re-measure if Render changes its edge.
+        value: '3'
       # Required secrets, entered once at Blueprint creation (docs/SETUP.md step 3).
       - key: DATABASE_URL
         sync: false # Neon POOLED URL (-pooler host): all app traffic
