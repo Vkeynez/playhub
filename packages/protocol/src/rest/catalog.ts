@@ -78,5 +78,11 @@ export const HealthResponseSchema = z.object({
   rooms: z.int().min(0),
   /** Event-loop utilization, 0–1. */
   elu: z.number().min(0).max(1),
+  /** Server process epoch (ARCHITECTURE §5.5). */
+  epoch: z.int().min(0),
+  /** Open Socket.IO connections. */
+  sockets: z.int().min(0),
+  /** Event-loop delay p99 in ms, sampled every 5 s. */
+  eldP99Ms: z.number().min(0),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;

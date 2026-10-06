@@ -48,12 +48,18 @@ export const HelloAckSchema = z.discriminatedUnion('ok', [
     ok: z.literal(true),
     serverTime: WallTimeMsSchema,
     protocol: ProtocolRangeSchema,
+    /** Changes on every server process start; a new value after a reconnect means a restart. */
+    bootId: z.string().min(1).max(64),
+    /** Server process epoch (ARCHITECTURE §5.5), the high part of every room version. */
+    epoch: z.int().min(0),
   }),
   z.object({
     ok: z.literal(false),
     serverTime: WallTimeMsSchema,
     protocol: ProtocolRangeSchema,
     reason: z.enum(HELLO_REJECTIONS),
+    bootId: z.string().min(1).max(64).optional(),
+    epoch: z.int().min(0).optional(),
   }),
 ]);
 export type HelloAck = z.infer<typeof HelloAckSchema>;

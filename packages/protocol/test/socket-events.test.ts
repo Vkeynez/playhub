@@ -128,7 +128,13 @@ describe('hello', () => {
   });
 
   it('parses both ack shapes', () => {
-    const ok = parseClientAck('hello', { ok: true, serverTime: 1, protocol: { min: 1, max: 1 } });
+    const ok = parseClientAck('hello', {
+      ok: true,
+      serverTime: 1,
+      protocol: { min: 1, max: 1 },
+      bootId: 'boot-1',
+      epoch: 2,
+    });
     expect(ok.ok).toBe(true);
     const tooOld = parseClientAck('hello', {
       ok: false,

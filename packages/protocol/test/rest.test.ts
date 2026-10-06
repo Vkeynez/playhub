@@ -151,6 +151,9 @@ describe('catalog, version and health', () => {
       uptime: 3.2,
       rooms: 0,
       elu: 0.1,
+      epoch: 3,
+      sockets: 2,
+      eldP99Ms: 4.5,
     };
     expect(HealthResponseSchema.safeParse(health).success).toBe(true);
     expect(HealthResponseSchema.safeParse({ ...health, ok: false }).success).toBe(false);
