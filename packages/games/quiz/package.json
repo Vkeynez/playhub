@@ -1,0 +1,19 @@
+{
+  "name": "@gp/game-quiz",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./logic": "./src/logic/index.ts",
+    "./manifest": "./src/manifest.ts",
+    "./content": "./src/content/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@gp/game-sdk": "workspace:*",
+    "zod": "4.6.5"
+  }
+}
