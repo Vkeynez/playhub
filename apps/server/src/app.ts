@@ -7,15 +7,24 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import { z } from 'zod';
 import type { createPool } from '@gp/db';
 import { PROTOCOL_VERSION, type ApiErrorCode, type HealthResponse } from '@gp/protocol';
+import { registerAuthRoutes } from './auth/routes';
+import { TokenService } from './auth/tokens';
 import type { Env } from './env';
 import { startProcessMetrics } from './metrics';
+import { ProfileCache } from './profiles';
+import { createLimiters, type RateLimitConfig } from './rate-limit';
 import { attachRealtime, type Realtime } from './realtime';
+import { RoomManager } from './rooms/manager';
+import { registerRoomRoutes } from './rooms/routes';
+import { RoomStore } from './rooms/store';
+import { realTimers, type Timers } from './timers';
 
 export type Pool = ReturnType<typeof createPool>;
 
 declare module 'fastify' {
   interface FastifyInstance {
     realtime: Realtime;
+    rooms: RoomManager;
   }
 }
 
@@ -49,6 +58,10 @@ export interface BuildAppOptions {
   bootId: string;
   /** Log destination; defaults to stdout. Tests pass a sink. */
   logStream?: { write(line: string): void };
+  /** Room timers and the game clock; tests pass a manual clock. */
+  timers?: Timers;
+  /** Overrides for the in-memory rate limits (§5.7). */
+  rateLimits?: Partial<RateLimitConfig>;
 }
 
 const CORS_METHODS = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
@@ -80,6 +93,8 @@ export function buildApp({
   epoch,
   bootId,
   logStream,
+  timers = realTimers,
+  rateLimits,
 }: BuildAppOptions): FastifyInstance {
   const app = Fastify({
     logger: {
@@ -102,6 +117,24 @@ export function buildApp({
     done();
   });
 
+  const tokens = new TokenService({
+    jwtSecret: env.JWT_SECRET,
+    refreshSecret: env.REFRESH_SECRET,
+    rotateSecret: env.K_ROTATE,
+  });
+  const limiters = createLimiters(rateLimits);
+  const profiles = new ProfileCache();
+  const store = new RoomStore(pool, epoch);
+  const rooms = new RoomManager({
+    store,
+    pool,
+    profiles,
+    timers,
+    epoch,
+    log: app.log,
+    maxActiveRooms: env.MAX_ACTIVE_ROOMS,
+  });
+  app.decorate('rooms', rooms);
   app.decorate(
     'realtime',
     attachRealtime(app, {
@@ -110,6 +143,8 @@ export function buildApp({
       bootId,
       epoch,
       minProtocolVersion: env.MIN_PROTOCOL_VERSION,
+      tokens,
+      rooms: { manager: rooms, limiters, profiles, pool, log: app.log },
     }),
   );
 
@@ -140,6 +175,12 @@ export function buildApp({
     if (!reply.hasHeader('cache-control')) reply.header('cache-control', 'no-store');
   });
 
+  // Coarse per-IP backstop (§5.7) for every DB-backed route; /health stays free of it.
+  app.addHook('onRequest', async (request, reply) => {
+    if (request.method === 'OPTIONS' || request.url.startsWith('/health')) return;
+    if (!limiters.restPerIp.take(request.ip)) return sendError(reply, 429, 'rate_limited');
+  });
+
   app.setNotFoundHandler((_request, reply) => sendError(reply, 404, 'not_found'));
   app.setErrorHandler((error: unknown, request, reply) => {
     const raw =
@@ -164,13 +205,21 @@ export function buildApp({
       buildSha: env.BUILD_SHA,
       protocolVersion: PROTOCOL_VERSION,
       uptime: Math.round(process.uptime()),
-      rooms: 0,
+      rooms: rooms.size,
       elu: metrics.elu(),
       epoch,
       sockets: app.realtime.socketCount(),
       eldP99Ms: metrics.eldP99Ms(),
     };
     return body;
+  });
+
+  registerAuthRoutes(app, { pool, tokens, limiters, profiles });
+  registerRoomRoutes(app, {
+    manager: rooms,
+    tokens,
+    limiters,
+    webBase: env.PUBLIC_WEB_URL ?? env.CORS_ORIGINS[0] ?? 'http://localhost:8090',
   });
 
   // --- Admin-only routes (ADMIN_TOKEN bearer) ----------------------------------------------------

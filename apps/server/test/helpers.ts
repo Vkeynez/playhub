@@ -1,14 +1,19 @@
+import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:net';
 import { createPool } from '@gp/db';
 import {
+  parseServerEvent,
   PROTOCOL_VERSION,
   type ClientToServerEvents,
   type ClientEventInput,
+  type RoomSnapshot,
   type ServerToClientEvents,
 } from '@gp/protocol';
 import { io, type Socket } from 'socket.io-client';
 import type { Pool } from '../src/app';
+import { TokenService } from '../src/auth/tokens';
 import { parseEnv, type Env } from '../src/env';
+import type { TimerHandle, Timers } from '../src/timers';
 
 export const ADMIN_TOKEN = 'admin-token-for-tests-0123456789abcdef';
 export const ALLOWED_ORIGIN = 'https://web.example.test';
@@ -66,13 +71,33 @@ export function freePort(): Promise<number> {
 
 export type TestSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
-/** Connects over WebSocket only and resolves once connected (rejects on connect_error). */
-export function connect(port: number, headers: Record<string, string> = {}): Promise<TestSocket> {
+/** Signs access tokens with the test env's JWT_SECRET. */
+export const testTokens = new TokenService({
+  jwtSecret: rawEnv().JWT_SECRET,
+  refreshSecret: rawEnv().REFRESH_SECRET,
+  rotateSecret: rawEnv().K_ROTATE,
+});
+
+export async function accessTokenFor(userId: string = randomUUID()): Promise<string> {
+  return (await testTokens.signAccess(userId)).token;
+}
+
+/**
+ * Connects over WebSocket only and resolves once connected (rejects on connect_error). Without a
+ * `token`, signs one for a random user; `null` connects without one.
+ */
+export async function connect(
+  port: number,
+  headers: Record<string, string> = {},
+  token?: string | null,
+): Promise<TestSocket> {
+  const auth = token === null ? {} : { token: token ?? (await accessTokenFor()) };
   const socket: TestSocket = io(`http://127.0.0.1:${port}`, {
     transports: ['websocket'],
     reconnection: false,
     forceNew: true,
     extraHeaders: headers,
+    auth,
   });
   return new Promise((resolve, reject) => {
     socket.once('connect', () => resolve(socket));
@@ -91,4 +116,102 @@ export function hello(protocolVersion = PROTOCOL_VERSION): ClientEventInput<'hel
     deviceId: 'device-test-1',
     locale: 'en',
   };
+}
+
+/** Counts pool checkouts (every query and every transaction takes one): proof of "no DB access". */
+export function countCheckouts(pool: Pool): () => number {
+  let count = 0;
+  pool.on('acquire', () => count++);
+  return () => count;
+}
+
+/** A manual clock for room timers: `advance()` fires due timers in order, settling between them. */
+export class ManualTimers implements Timers {
+  private current: number;
+  private seq = 0;
+  private pending: { at: number; seq: number; fn: () => void; cancelled: boolean }[] = [];
+
+  /** Waits for room queues and writes after each fired timer (set once the app exists). */
+  onSettle: () => Promise<void> = () => Promise.resolve();
+
+  constructor(start = Date.now()) {
+    this.current = start;
+  }
+
+  now(): number {
+    return this.current;
+  }
+
+  after(ms: number, fn: () => void): TimerHandle {
+    const timer = { at: this.current + Math.max(0, ms), seq: this.seq++, fn, cancelled: false };
+    this.pending.push(timer);
+    return { cancel: () => void (timer.cancelled = true) };
+  }
+
+  async advance(ms: number): Promise<void> {
+    const target = this.current + ms;
+    for (;;) {
+      this.pending = this.pending.filter((timer) => !timer.cancelled);
+      const due = this.pending
+        .filter((timer) => timer.at <= target)
+        .sort((a, b) => a.at - b.at || a.seq - b.seq)[0];
+      if (!due) break;
+      this.pending.splice(this.pending.indexOf(due), 1);
+      this.current = Math.max(this.current, due.at);
+      due.fn();
+      await this.onSettle();
+    }
+    this.current = target;
+  }
+}
+
+/** room:state payloads that failed the protocol schema (tests assert this stays empty). */
+export const invalidStates: string[] = [];
+
+/** A socket with its room:state history and a `waitFor` on it. */
+export class Player {
+  readonly states: RoomSnapshot[] = [];
+  private waiters: { test: (s: RoomSnapshot) => boolean; resolve: (s: RoomSnapshot) => void }[] =
+    [];
+
+  constructor(
+    readonly socket: TestSocket,
+    readonly userId: string,
+  ) {
+    socket.on('room:state', (state) => this.push(state));
+  }
+
+  push(state: RoomSnapshot): void {
+    const parsed = parseServerEvent('room:state', state);
+    if (!parsed.ok) invalidStates.push(parsed.error.message);
+    this.states.push(state);
+    for (const waiter of [...this.waiters]) {
+      if (waiter.test(state)) {
+        this.waiters.splice(this.waiters.indexOf(waiter), 1);
+        waiter.resolve(state);
+      }
+    }
+  }
+
+  get last(): RoomSnapshot {
+    const state = this.states.at(-1);
+    if (!state) throw new Error('no room:state yet');
+    return state;
+  }
+
+  /** The latest state if it matches, else the next one that does. */
+  waitFor(test: (s: RoomSnapshot) => boolean, timeoutMs = 5_000): Promise<RoomSnapshot> {
+    const latest = this.states.at(-1);
+    if (latest && test(latest)) return Promise.resolve(latest);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('waitFor timed out')), timeoutMs);
+      this.waiters.push({
+        test,
+        resolve: (state) => {
+          clearTimeout(timer);
+          resolve(state);
+        },
+      });
+    });
+  }
 }

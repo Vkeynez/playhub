@@ -3,12 +3,14 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import type { HelloAckWithBoot } from '../src/realtime';
+import { randomUUID } from 'node:crypto';
 import {
   ALLOWED_ORIGIN,
   connect,
   hello,
   sink,
   testEnv,
+  testTokens,
   throwingPool,
   type TestSocket,
 } from './helpers';
@@ -126,12 +128,25 @@ describe('connections', () => {
     await expect(open({ origin: 'https://evil.example' })).rejects.toThrow();
   });
 
-  it('answers events this build does not handle yet', async () => {
+  it('answers unknown events and invalid room payloads with an error event', async () => {
     const socket = await open();
-    const error = new Promise<ServerEventPayload<'error'>>((resolve) =>
+    const raw = socket as unknown as { emit(event: string, payload: unknown): void };
+    const unknown = new Promise<ServerEventPayload<'error'>>((resolve) =>
       socket.once('error', resolve),
     );
-    socket.emit('presence', { state: 'active' } as never);
-    expect((await error).code).toMatch(/^(HELLO_REQUIRED|UNKNOWN_EVENT)$/);
+    raw.emit('bogus:event', {});
+    expect((await unknown).code).toBe('UNKNOWN_EVENT');
+    const invalid = new Promise<ServerEventPayload<'error'>>((resolve) =>
+      socket.once('error', resolve),
+    );
+    raw.emit('presence', { state: 'active' });
+    expect(await invalid).toEqual({ code: 'INVALID_PAYLOAD', event: 'presence' });
+  });
+
+  it('refuses a handshake without a valid access token (stateless, no DB)', async () => {
+    await expect(connect(port, {}, null)).rejects.toThrow('UNAUTHORIZED');
+    await expect(connect(port, {}, 'not-a-jwt')).rejects.toThrow('UNAUTHORIZED');
+    const expired = await testTokens.signAccess(randomUUID(), Date.now() - 16 * 60_000);
+    await expect(connect(port, {}, expired.token)).rejects.toThrow('UNAUTHORIZED');
   });
 });

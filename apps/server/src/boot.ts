@@ -4,9 +4,12 @@
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import type { FastifyInstance } from 'fastify';
-import { bumpServerEpoch, createPool, db, runMigrations } from '@gp/db';
+import { bumpServerEpoch, createPool, db, runMigrations, seedCatalog } from '@gp/db';
 import { buildApp, type Pool } from './app';
 import type { Env } from './env';
+
+/** SIGTERM drain budget for room writes; Render kills the process 30 s after SIGTERM. */
+const DRAIN_TIMEOUT_MS = 5_000;
 
 export interface LogSink {
   write(line: string): void;
@@ -78,6 +81,8 @@ export async function bootServer(options: BootOptions): Promise<RunningServer> {
 
   try {
     const epoch = await bumpServerEpoch(db(pool));
+    // Rooms reference `games`; insert any missing catalog rows (existing rows are left to ops).
+    await seedCatalog(db(pool));
     const built = buildApp({ env, pool, epoch, bootId, logStream: options.logStream });
     app = built;
     await built.listen({ host: options.host ?? '0.0.0.0', port: options.port ?? env.PORT });
@@ -105,6 +110,11 @@ export async function bootServer(options: BootOptions): Promise<RunningServer> {
     const shutdown = (signal: string): Promise<void> => {
       closing ??= (async () => {
         built.log.info({ signal, sockets: built.realtime.socketCount() }, 'shutting down');
+        // Snapshot and release every room before telling clients to move (§5.6).
+        await Promise.race([
+          built.rooms.drain(),
+          new Promise((resolve) => setTimeout(resolve, DRAIN_TIMEOUT_MS).unref()),
+        ]);
         built.realtime.drain('DEPLOY');
         await built.close();
         await pool.end();

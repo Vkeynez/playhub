@@ -102,6 +102,19 @@ const EnvSchema = z.object({
     blankToUndefined,
     z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   ),
+  /** Room creation cap (ARCHITECTURE §4.2): creation only, never activation or restore. */
+  MAX_ACTIVE_ROOMS: z.preprocess(
+    blankToUndefined,
+    z.coerce.number().int().min(1).max(1_000).default(25),
+  ),
+  /** Base of the share link `<PUBLIC_WEB_URL>/join/<CODE>`; defaults to the first CORS origin. */
+  PUBLIC_WEB_URL: optional(
+    z
+      .string()
+      .trim()
+      .transform((value) => normalizeOrigin(value))
+      .pipe(z.string({ message: 'must be an origin like https://example.com' })),
+  ),
   BUILD_SHA: optional(z.string().trim().max(64)),
   RENDER_GIT_COMMIT: optional(z.string().trim().max(64)),
 });
