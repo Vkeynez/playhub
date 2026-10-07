@@ -35,6 +35,30 @@ export function homeSeat(view: CricketView): Seat {
   return view.you ?? 0;
 }
 
+export interface SeatPlayer {
+  seat: Seat;
+  name: string;
+  bot: boolean;
+}
+
+/**
+ * Labels per seat: "You" for your own seat; a human opponent (multiplayer) by name, otherwise
+ * "Bot"; a spectator sees both players' names.
+ */
+export function seatNames(
+  you: Seat | null,
+  players: readonly SeatPlayer[] | undefined,
+  labels: { you: string; bot: string },
+): Record<number, string> {
+  const home = you ?? 0;
+  const away = otherSeat(home);
+  const human = (seat: Seat) => players?.find((p) => p.seat === seat && !p.bot)?.name;
+  return {
+    [home]: you === null ? (human(home) ?? 'P1') : labels.you,
+    [away]: human(away) ?? labels.bot,
+  };
+}
+
 /** Cricket notation: 9 balls at 6 an over → "1.3". */
 export function oversText(balls: number, perOver: number): string {
   return `${Math.floor(balls / perOver)}.${balls % perOver}`;

@@ -11,6 +11,7 @@ import {
   poseFor,
   resultLine,
   roleOf,
+  seatNames,
   teamLines,
 } from '../model';
 
@@ -154,5 +155,20 @@ describe('ui model', () => {
     expect(canPick(view({ picks: [{ hidden: true }, null] }), false)).toBe(false);
     expect(canPick(view({ phase: 'ball-result' }), false)).toBe(false);
     expect(canPick(view({ you: null }), false)).toBe(false);
+  });
+
+  it('names a human opponent instead of "Bot", and both players for a spectator', () => {
+    const labels = { you: 'You', bot: 'Bot' };
+    const players = [
+      { seat: 0, name: 'Asha', bot: false },
+      { seat: 1, name: 'Ravi', bot: false },
+    ];
+    expect(seatNames(1, players, labels)).toEqual({ 1: 'You', 0: 'Asha' });
+    expect(seatNames(null, players, labels)).toEqual({ 0: 'Asha', 1: 'Ravi' });
+    expect(seatNames(0, undefined, labels)).toEqual({ 0: 'You', 1: 'Bot' });
+    expect(seatNames(0, [{ seat: 1, name: 'Bot 1', bot: true }], labels)).toEqual({
+      0: 'You',
+      1: 'Bot',
+    });
   });
 });

@@ -26,7 +26,7 @@ import { Arena, arenaLayout, shakeSequence } from './Arena';
 import { ChoiceRow, PickPad } from './Controls';
 import type { Translate } from './i18n';
 import { useStrings } from './i18n';
-import type { BallFeedback } from './model';
+import type { BallFeedback, SeatPlayer } from './model';
 import {
   canPick,
   chaseOf,
@@ -38,6 +38,7 @@ import {
   oversText,
   resultLine,
   roleOf,
+  seatNames,
   teamLines,
 } from './model';
 import { IMPACT_AT_MS, REVEAL_AT_MS } from './motion';
@@ -54,6 +55,8 @@ export interface CricketScreenProps {
   seat: Seat | null;
   submit(action: CricketAction): Promise<SubmitResult>;
   serverNow(): number;
+  /** Multiplayer only: the seated players, for real names instead of "Bot". */
+  players?: readonly SeatPlayer[];
 }
 
 interface Size {
@@ -78,17 +81,22 @@ export function Screen(props: CricketScreenProps) {
   );
 }
 
-function Match({ view, meta, submit, serverNow, size }: CricketScreenProps & { size: Size }) {
+function Match({
+  view,
+  meta,
+  submit,
+  serverNow,
+  size,
+  players,
+}: CricketScreenProps & { size: Size }) {
   const t = useStrings();
   const reduceMotion = useReducedMotion();
   const home = homeSeat(view);
   const away = otherSeat(home);
-  const names = useMemo(() => {
-    const n: Record<number, string> = {};
-    n[home] = view.you === null ? 'P1' : t('you');
-    n[away] = t('bot');
-    return n;
-  }, [home, away, view.you, t]);
+  const names = useMemo(
+    () => seatNames(view.you, players, { you: t('you'), bot: t('bot') }),
+    [view.you, players, t],
+  );
   const homeName = names[home] ?? '';
   const awayName = names[away] ?? '';
 

@@ -10,6 +10,7 @@
     "build": "node scripts/prepare-canvaskit.mjs && node scripts/prepare-registry.mjs && expo export -p web --output-dir dist && node scripts/postbuild.mjs",
     "serve": "node scripts/serve-dist.mjs",
     "smoke": "node scripts/smoke-web.mjs",
+    "e2e:multiplayer": "node scripts/e2e-multiplayer.mjs",
     "typecheck": "node scripts/prepare-canvaskit.mjs --ts-only && node scripts/prepare-registry.mjs && tsc -p tsconfig.json",
     "test": "vitest run"
   },
