@@ -54,9 +54,15 @@ try {
   });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  // No API runs during the smoke, so the join deep link's requests are refused; that's expected.
+  const expectedNetworkError = (text) =>
+    /Failed to load resource: net::ERR_CONNECTION_REFUSED/.test(text);
   page.on(
     'console',
-    (m) => m.type() === 'error' && errors.push(`console: ${m.text().slice(0, 300)}`),
+    (m) =>
+      m.type() === 'error' &&
+      !expectedNetworkError(m.text()) &&
+      errors.push(`console: ${m.text().slice(0, 300)}`),
   );
   const byTestId = (id) => page.locator(`[data-testid="${id}"]`);
 
@@ -81,8 +87,7 @@ try {
   // 2. Join sheet
   await byTestId('join').click();
   await byTestId('join-sheet').waitFor({ timeout: 5_000 });
-  const joinShown = await page
-    .getByText('Multiplayer is coming soon')
+  const joinShown = await byTestId('code-input')
     .waitFor({ timeout: 5_000 })
     .then(
       () => true,
@@ -167,9 +172,19 @@ try {
   log(`info cricket UI: ${notReady ? 'not built yet (placeholder shown)' : 'loaded'}`);
   await page.screenshot({ path: path.join(shots, 'cricket.png') });
 
-  // Deep link to an unknown route falls back to the SPA shell.
+  // Deep link to an unknown route falls back to the SPA shell; the join screen renders even with
+  // no API running (it shows the wake banner while it waits for one).
   const res = await page.goto(`${BASE}/join/ABCDEF`);
   check(res?.status() === 200, 'SPA fallback for /join/ABCDEF');
+  const joining = await page
+    .getByText('Joining room ABCDEF')
+    .waitFor({ timeout: 10_000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  check(joining, 'join deep link screen');
+  await page.screenshot({ path: path.join(shots, 'join-link.png') });
 } catch (e) {
   failures.push(String(e));
   log(`FAIL ${String(e).slice(0, 400)}`);

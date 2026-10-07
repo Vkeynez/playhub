@@ -24,32 +24,63 @@ const BADGE: Record<Outcome, { glyph: string; color: string }> = {
 interface ResultSheetProps {
   outcome: Outcome;
   onRematch(): void;
-  onSettings(): void;
+  /** vs-bot only: back to the setup sheet. */
+  onSettings?(): void;
   onHome(): void;
+  /** Multiplayer overrides: "Asha wins", "Leave room", a rematch note. */
+  title?: string;
+  subtitle?: string;
+  homeLabel?: string;
+  rematchDisabled?: boolean;
+  note?: string | null;
 }
 
-export function ResultSheet({ outcome, onRematch, onSettings, onHome }: ResultSheetProps) {
+export function ResultSheet({
+  outcome,
+  onRematch,
+  onSettings,
+  onHome,
+  title,
+  subtitle,
+  homeLabel,
+  rematchDisabled = false,
+  note,
+}: ResultSheetProps) {
   const { t } = useTranslation();
   const badge = BADGE[outcome];
   return (
     <Sheet
-      title={t(`result.${outcome}`)}
+      title={title ?? t(`result.${outcome}`)}
       testID="result-sheet"
       footer={
         <>
-          <Button big label={t('common.rematch')} onPress={onRematch} testID="rematch" />
+          {note ? (
+            <Text style={styles.note} accessibilityLiveRegion="polite">
+              {note}
+            </Text>
+          ) : null}
+          <Button
+            big
+            label={t('common.rematch')}
+            onPress={onRematch}
+            disabled={rematchDisabled}
+            testID="rematch"
+          />
           <View style={styles.row}>
+            {onSettings && (
+              <Button
+                variant="secondary"
+                label={t('setup.title')}
+                onPress={onSettings}
+                style={styles.flex}
+              />
+            )}
             <Button
               variant="secondary"
-              label={t('setup.title')}
-              onPress={onSettings}
-              style={styles.flex}
-            />
-            <Button
-              variant="secondary"
-              label={t('common.backHome')}
+              label={homeLabel ?? t('common.backHome')}
               onPress={onHome}
               style={styles.flex}
+              testID="result-home"
             />
           </View>
         </>
@@ -61,7 +92,7 @@ export function ResultSheet({ outcome, onRematch, onSettings, onHome }: ResultSh
       >
         <Text style={[styles.glyph, { color: badge.color }]}>{badge.glyph}</Text>
       </Animated.View>
-      <Text style={styles.sub}>{t(`result.${outcome}Sub`)}</Text>
+      <Text style={styles.sub}>{subtitle ?? t(`result.${outcome}Sub`)}</Text>
     </Sheet>
   );
 }
@@ -80,5 +111,6 @@ const styles = StyleSheet.create({
   glyph: { fontSize: 48, fontWeight: '900' },
   sub: { color: colors.textMuted, fontSize: font.body, textAlign: 'center' },
   row: { flexDirection: 'row', gap: space.sm },
+  note: { color: colors.marigold, fontSize: font.small, textAlign: 'center', fontWeight: '700' },
   flex: { flex: 1 },
 });

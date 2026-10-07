@@ -27,6 +27,13 @@ interface SetupSheetProps {
   seatLabels?: readonly string[] | undefined;
   initial: MatchSettings | null;
   onStart(settings: MatchSettings): void;
+  /** Shown for games with a 2+ seat mode: creates a room instead of a vs-bot match. */
+  onPlayFriend?(settings: MatchSettings): void;
+  /** "Creating your room…" while POST /rooms runs. */
+  friendBusy?: boolean;
+  friendError?: string | null;
+  /** Shown under the buttons, e.g. the wake banner. */
+  extra?: ReactNode;
   onClose(): void;
 }
 
@@ -46,6 +53,10 @@ export function SetupSheet({
   seatLabels,
   initial,
   onStart,
+  onPlayFriend,
+  friendBusy = false,
+  friendError,
+  extra,
   onClose,
 }: SetupSheetProps) {
   const { t } = useTranslation();
@@ -53,6 +64,7 @@ export function SetupSheet({
     () => initial ?? defaultSettings(manifest, options),
   );
   const modes = manifest.modes.filter((m) => m.supportsBots);
+  const friendsAllowed = (manifest.modes.find((m) => m.id === settings.mode)?.seats.max ?? 1) >= 2;
 
   const setOption = (key: string, value: OptionValue | undefined) =>
     setSettings((s) => {
@@ -69,7 +81,36 @@ export function SetupSheet({
       closeLabel={t('common.backHome')}
       testID="setup-sheet"
       footer={
-        <Button big label={t('common.start')} onPress={() => onStart(settings)} testID="start" />
+        <>
+          {friendError ? (
+            <Text style={styles.error} role="alert">
+              {friendError}
+            </Text>
+          ) : null}
+          {extra}
+          <View style={styles.footerRow}>
+            <Button
+              big
+              label={t('common.start')}
+              onPress={() => onStart(settings)}
+              disabled={friendBusy}
+              style={styles.flex}
+              testID="start"
+            />
+            {onPlayFriend && friendsAllowed && (
+              <Button
+                big
+                variant="secondary"
+                label={friendBusy ? t('friends.creating') : t('friends.playWithFriend')}
+                accessibilityHint={t('friends.hint')}
+                onPress={() => onPlayFriend(settings)}
+                disabled={friendBusy}
+                style={styles.flex}
+                testID="play-friend"
+              />
+            )}
+          </View>
+        </>
       }
     >
       <Text style={styles.subtitle}>
@@ -208,5 +249,8 @@ const styles = StyleSheet.create({
   levelName: { color: colors.text, fontSize: font.body, fontWeight: '800' },
   levelHint: { color: colors.textMuted, fontSize: font.tiny, lineHeight: 16 },
   option: { gap: space.sm },
+  footerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  flex: { flexGrow: 1, flexBasis: 220 },
+  error: { color: colors.danger, fontSize: font.small, textAlign: 'center', fontWeight: '600' },
   optionLabel: { color: colors.text, fontSize: font.body, fontWeight: '600' },
 });

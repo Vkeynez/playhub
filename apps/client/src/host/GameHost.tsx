@@ -10,7 +10,9 @@ import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from '
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getGame } from '../registry';
+import { ApiError } from '../net/api';
+import { authedFetch } from '../net/client';
+import { getGame, supportsFriends } from '../registry';
 import { UiNotReadyError } from '../registry/games';
 import { LocalRoom } from '../room/LocalRoom';
 import type { GameRegistration, GameScreenProps, GameUiModule } from '../room/types';
@@ -18,6 +20,7 @@ import { ensureSkia, useSkiaStatus } from '../skia';
 import { Backdrop } from '../ui/Backdrop';
 import { Button } from '../ui/Button';
 import { GameArt } from '../ui/GameArt';
+import { WakeBanner } from '../ui/WakeBanner';
 import { colors, CONTENT_MAX, font, radius, space, TOUCH } from '../ui/theme';
 import { configOptions } from './configOptions';
 import { ResultSheet, outcomeFor } from './ResultSheet';
@@ -28,7 +31,7 @@ type AnyRoom = LocalRoom<unknown, unknown, unknown, unknown, GameEvent>;
 type Phase = 'setup' | 'starting' | 'playing' | 'not-ready' | 'error';
 
 /** How long the final move animates before the result sheet slides up. */
-const RESULT_DELAY_MS = 1100;
+export const RESULT_DELAY_MS = 1100;
 
 function goHome() {
   if (router.canGoBack()) router.back();
@@ -54,6 +57,8 @@ function RegisteredHost({ registration }: { registration: GameRegistration }) {
   const [room, setRoom] = useState<AnyRoom | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [matchNo, setMatchNo] = useState(0);
+  const [friendBusy, setFriendBusy] = useState(false);
+  const [friendError, setFriendError] = useState<string | null>(null);
   const skiaStatus = useSkiaStatus();
 
   useEffect(() => {
@@ -123,6 +128,39 @@ function RegisteredHost({ registration }: { registration: GameRegistration }) {
     [createRoom, logic, registration, ui],
   );
 
+  // "Play with a friend": POST /rooms, then the lobby (BUILD_BRIEF §6.2).
+  const playFriend = useCallback(
+    async (s: MatchSettings) => {
+      const mode = manifest.modes.find((m) => m.id === s.mode);
+      setSettings(s);
+      setFriendBusy(true);
+      setFriendError(null);
+      try {
+        const room = await authedFetch('createRoom', {
+          body: {
+            gameId: manifest.id,
+            mode: s.mode,
+            seatCount: Math.max(2, mode?.seats.min ?? 2),
+            options: s.config,
+          },
+        });
+        router.replace(`/room/${room.roomId}`);
+      } catch (e) {
+        const code = e instanceof ApiError ? e.code : 'internal';
+        setFriendError(
+          code === 'game_unavailable'
+            ? t('friends.unavailable')
+            : code === 'asleep' || code === 'offline'
+              ? t(`join.errors.${code}`)
+              : t('friends.createFailed'),
+        );
+      } finally {
+        setFriendBusy(false);
+      }
+    },
+    [manifest, t],
+  );
+
   const name = t(manifest.name);
 
   if (phase === 'not-ready') {
@@ -189,6 +227,12 @@ function RegisteredHost({ registration }: { registration: GameRegistration }) {
           seatLabels={registration.seatChoice?.labels}
           initial={settings}
           onStart={(s) => void start(s)}
+          {...(supportsFriends(registration)
+            ? { onPlayFriend: (s: MatchSettings) => void playFriend(s) }
+            : {})}
+          friendBusy={friendBusy}
+          friendError={friendError}
+          extra={<WakeBanner />}
           onClose={goHome}
         />
       )}
@@ -323,7 +367,7 @@ function Centered({ children }: { children: ReactNode }) {
   return <View style={styles.centered}>{children}</View>;
 }
 
-class ScreenBoundary extends Component<
+export class ScreenBoundary extends Component<
   { children: ReactNode; fallback: ReactNode },
   { failed: boolean }
 > {

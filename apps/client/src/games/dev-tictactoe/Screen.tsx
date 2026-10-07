@@ -21,13 +21,21 @@ type Props = GameScreenProps<TicTacToeView, PlaceAction, TicTacToeEvent>;
 const MARK_COLOR = [colors.marigold, colors.teal] as const;
 const MARK = ['X', 'O'] as const;
 
-export function Screen({ view, meta, submit, serverNow }: Props) {
+export function Screen({ view, meta, submit, serverNow, players }: Props) {
   const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const [pending, setPending] = useState<number | null>(null);
+  const spectating = view.you === null && players !== undefined;
   const you = view.you ?? 0;
   const finished = meta.finished;
-  const myTurn = !finished && view.turn === you;
+  const myTurn = !finished && !spectating && view.turn === you;
+  const nameOf = (seat: number, fallback: string) => {
+    const player = players?.find((p) => p.seat === seat);
+    return player && !player.bot ? player.name : fallback;
+  };
+  const meLabel = spectating ? nameOf(you, MARK[you] ?? 'X') : t('common.you');
+  const opponentLabel = nameOf(1 - you, t('common.bot'));
+  const opponentHuman = players?.find((p) => p.seat === 1 - you)?.bot === false;
   const boardSize = Math.max(198, Math.min(420, width - space.lg * 2, height - 260));
   const cellSize = Math.floor(boardSize / 3);
 
@@ -43,22 +51,26 @@ export function Screen({ view, meta, submit, serverNow }: Props) {
 
   const status = finished
     ? ''
-    : myTurn
-      ? t('games.devTictactoe.yourTurn')
-      : t('games.devTictactoe.botTurn');
+    : spectating
+      ? t('games.devTictactoe.theirTurn', { name: nameOf(view.turn, MARK[view.turn] ?? '') })
+      : myTurn
+        ? t('games.devTictactoe.yourTurn')
+        : opponentHuman
+          ? t('games.devTictactoe.theirTurn', { name: opponentLabel })
+          : t('games.devTictactoe.botTurn');
 
   return (
     <View style={styles.root}>
       <View style={styles.top}>
         <View style={styles.players}>
           <PlayerBadge
-            label={t('common.you')}
+            label={meLabel}
             mark={MARK[you] ?? 'X'}
             color={MARK_COLOR[you] ?? colors.marigold}
             active={myTurn}
           />
           <PlayerBadge
-            label={t('common.bot')}
+            label={opponentLabel}
             mark={MARK[1 - you] ?? 'O'}
             color={MARK_COLOR[1 - you] ?? colors.teal}
             active={!finished && !myTurn}

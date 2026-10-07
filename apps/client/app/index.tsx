@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CATALOG, SHELVES } from '../src/catalog';
 import type { CatalogEntry } from '../src/catalog';
 import { gameKey, i18n } from '../src/i18n';
+import { JoinSheet } from '../src/lobby/JoinSheet';
 import { isRegistered } from '../src/registry';
 import { Backdrop } from '../src/ui/Backdrop';
 import { Button } from '../src/ui/Button';
@@ -129,32 +130,7 @@ export default function Home() {
         </View>
       </ScrollView>
 
-      {joinOpen && (
-        <Sheet
-          title={t('join.title')}
-          onClose={() => setJoinOpen(false)}
-          closeLabel={t('common.close')}
-          testID="join-sheet"
-          footer={
-            <>
-              <Button
-                label={t('join.playBot')}
-                onPress={() => {
-                  setJoinOpen(false);
-                  router.push('/play/cricket');
-                }}
-              />
-              <Button
-                variant="ghost"
-                label={t('common.close')}
-                onPress={() => setJoinOpen(false)}
-              />
-            </>
-          }
-        >
-          <Text style={styles.sheetBody}>{t('join.body')}</Text>
-        </Sheet>
-      )}
+      {joinOpen && <JoinSheet onClose={() => setJoinOpen(false)} />}
 
       {soon && (
         <Sheet

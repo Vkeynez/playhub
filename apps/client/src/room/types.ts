@@ -37,6 +37,13 @@ export interface RoomTransport<V = unknown, A = unknown, E extends GameEvent = G
   serverNow(): number;
 }
 
+/** Who sits where, for multiplayer labels ("Asha's turn"). Absent in a vs-bot match. */
+export interface ScreenPlayer {
+  seat: Seat;
+  name: string;
+  bot: boolean;
+}
+
 /** Props every game Screen receives from GameHost. */
 export interface GameScreenProps<V = unknown, A = unknown, E extends GameEvent = GameEvent> {
   view: V;
@@ -49,6 +56,8 @@ export interface GameScreenProps<V = unknown, A = unknown, E extends GameEvent =
   mode: string;
   config: unknown;
   botLevel: BotLevel;
+  /** Multiplayer only: the seated players. */
+  players?: readonly ScreenPlayer[];
 }
 
 /** What a game's lazily loaded `ui` entry provides. */

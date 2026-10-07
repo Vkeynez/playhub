@@ -18,3 +18,8 @@ export function getGame(id: string): GameRegistration | undefined {
 export function isRegistered(id: string): boolean {
   return registry.has(id);
 }
+
+/** Friends play: some mode seats two or more humans. */
+export function supportsFriends(registration: GameRegistration): boolean {
+  return registration.manifest.modes.some((m) => m.seats.max >= 2);
+}
