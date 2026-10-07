@@ -376,6 +376,15 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
 
+  packages/games/color-sort:
+    dependencies:
+      '@gp/game-sdk':
+        specifier: workspace:*
+        version: link:../../game-sdk
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+
   packages/games/cricket:
     dependencies:
       '@gp/game-sdk':
@@ -420,6 +429,24 @@ importers:
         version: 4.6.5
 
   packages/games/dev-tictactoe:
+    dependencies:
+      '@gp/game-sdk':
+        specifier: workspace:*
+        version: link:../../game-sdk
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+
+  packages/games/ludo:
+    dependencies:
+      '@gp/game-sdk':
+        specifier: workspace:*
+        version: link:../../game-sdk
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+
+  packages/games/quiz:
     dependencies:
       '@gp/game-sdk':
         specifier: workspace:*
