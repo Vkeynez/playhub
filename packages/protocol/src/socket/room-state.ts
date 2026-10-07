@@ -75,6 +75,39 @@ export const RematchStateSchema = z.object({
 });
 
 /**
+ * The engine's metadata for the current match (P0 addition): which seats it is waiting on, the
+ * turn deadline in server wall time, whether the game clock is frozen (no human connected), and
+ * whether the match is over. `version` is the engine's own version; the client still sends the
+ * snapshot's top-level `version` as `game:action.baseVersion`.
+ */
+export const MatchMetaSchema = z.object({
+  version: VersionSchema,
+  awaiting: z.object({
+    seats: z.array(SeatSchema).max(8),
+    deadlineAt: WallTimeMsSchema.nullable(),
+  }),
+  paused: z.boolean(),
+  finished: z.boolean(),
+});
+export type MatchMeta = z.infer<typeof MatchMetaSchema>;
+
+/** A finished match's placements (place 1 wins; every seat in place 1 is a draw). P0 addition. */
+export const MatchPlacementsSchema = z.object({
+  placements: z
+    .array(
+      z.object({
+        seat: SeatSchema,
+        place: z.int().min(1).max(8),
+        score: z.number().nullable(),
+      }),
+    )
+    .max(8),
+  /** The match was abandoned (no human connected for 5 min): no W/L. */
+  abandoned: z.boolean().optional(),
+});
+export type MatchPlacements = z.infer<typeof MatchPlacementsSchema>;
+
+/**
  * The full per-viewer snapshot (`room:state`, and the `room:join` ack).
  * `view` and `events` come from the game's `viewFor` / `eventFor` and are opaque here.
  */
@@ -100,5 +133,9 @@ export const RoomSnapshotSchema = z.object({
   view: z.unknown(),
   /** `eventFor(event, viewer)` for the events of this step, already redacted. */
   events: z.array(z.unknown()).max(256),
+  /** P0 addition: the engine's metadata; `null` when there is no match yet. */
+  meta: MatchMetaSchema.nullable().optional(),
+  /** P0 addition: the match result once it is over, else `null`. */
+  result: MatchPlacementsSchema.nullable().optional(),
 });
 export type RoomSnapshot = z.infer<typeof RoomSnapshotSchema>;

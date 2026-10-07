@@ -14,9 +14,10 @@ import { RoomCodeInputSchema, RoomCodeSchema } from '../room-code';
 export const CreateRoomRequestSchema = z.object({
   gameId: GameIdSchema,
   mode: ModeIdSchema,
-  seatCount: SeatCountSchema,
-  /** Game-specific lobby options; validated by the game's `configSchema`. */
-  options: z.unknown(),
+  /** Optional (P0 change): defaults to the mode's smallest allowed seat count. */
+  seatCount: SeatCountSchema.optional(),
+  /** Game-specific lobby options; validated by the game's `configSchema`. Optional (P0): `{}`. */
+  options: z.unknown().optional(),
 });
 export type CreateRoomRequest = z.infer<typeof CreateRoomRequestSchema>;
 

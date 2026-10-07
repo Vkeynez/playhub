@@ -301,6 +301,23 @@ describe('server events', () => {
     expect(result).toEqual({ ok: true, data: snapshot() });
   });
 
+  it('keeps the optional P0 meta and result fields', () => {
+    const withMeta = {
+      ...snapshot(),
+      meta: {
+        version: 2 ** 32 + 3,
+        awaiting: { seats: [1], deadlineAt: 1_700_000_000_000 },
+        paused: false,
+        finished: false,
+      },
+      result: { placements: [{ seat: 0, place: 1, score: null }] },
+    };
+    expect(parseServerEvent('room:state', withMeta)).toEqual({ ok: true, data: withMeta });
+    expect(parseServerEvent('room:state', { ...snapshot(), meta: null, result: null }).ok).toBe(
+      true,
+    );
+  });
+
   it('rejects a snapshot with a bad version or phase', () => {
     expect(parseServerEvent('room:state', snapshot({ version: -1 })).ok).toBe(false);
     expect(parseServerEvent('room:state', { ...snapshot(), phase: 'PAUSED' }).ok).toBe(false);

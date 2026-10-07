@@ -177,6 +177,11 @@ describe('rooms', () => {
     expect(
       CreateRoomRequestSchema.safeParse({ gameId: 'quiz', mode: 'quick', seatCount: 9 }).success,
     ).toBe(false);
+    // P0: seatCount is optional (the server defaults it to the mode's smallest allowed count).
+    expect(
+      CreateRoomRequestSchema.safeParse({ gameId: 'cricket', mode: 'hand-cricket', options: {} })
+        .success,
+    ).toBe(true);
     expect(
       CreateRoomResponseSchema.safeParse({
         roomId: ROOM_ID,
